@@ -1,0 +1,210 @@
+---
+title: "Response and adverse events to chemotherapy: A mock study"
+description: |
+  A Y1 progress report presented to NRF funding agency
+author: 
+  - name: "Peter Higgins, MD, Ph.D."
+    url: https://www.uofmhealth.org/profile/4/peter-doyle-higgins-md-phd
+    affiliation: University of Michigan
+    affiliation_url: https://www.uofmhealth.org/
+  - name: "Alison Hill, Ph.D."
+    url: https://alison.rbind.io
+    affiliation: RStudio
+    affiliation_url: https://www.rstudio.com
+  - name: "Daniel Chen, MPH"
+    url: https://chendaniely.github.io/
+    affiliation: Virginia Tech
+creative_commons: CC BY
+date: "2019-09-12"
+output:   
+  distill::distill_article:
+    toc: true
+  html_document:
+    toc: true
+    toc_float: true
+    theme: flatly
+  pdf_document: default
+  word_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = FALSE,
+  warning = FALSE,
+  message = FALSE,
+  comment = NA
+)
+```
+
+
+```{r}
+library(arsenal) # for table one
+library(tableone) # for alternative table one
+library(janitor) # for tabyls
+library(here) # for file paths
+library(tidyverse) # for all else
+theme_set(theme_minimal())
+```
+
+```{r}
+mockdata <- read_csv(here("data/mockprogress.csv")) %>% 
+  mutate_at(
+    vars(starts_with("ae_")),
+    ~as.factor(.)
+    )
+expected <- read_csv(here("data/expected_counts.csv"))
+```
+
+```{r}
+# save some variables to refer to in text
+n_cases <- n_distinct(mockdata$case)
+n_sites <- n_distinct(mockdata$site)
+n_countries <- n_distinct(mockdata$country)
+n_target <- expected %>% tally(wt = n_expected) %>% pull()
+```
+
+# Summary
+
+We have collected data on `r n_cases` participants from all `r n_sites` planned sites. We have `r n_countries` countries represented. 
+
+```{r}
+ggplot(mockdata, aes(x = fct_infreq(country))) +
+  geom_bar() +
+  coord_flip() +
+  labs(y = "Enrollment", x = "") +
+  ggtitle("Enrolled participant counts by country")
+```
+
+Our target enrollment is `r n_target` participants total, so we are currently at `r ceiling((n_cases/n_target)*100)`% enrollment. Our latest enrollment counts by site are presented below. Targeted enrollment is approximately 100 participants per US site, with lower targets set for non-US sites.
+
+```{r}
+by_site <- mockdata %>% 
+  count(site, name = "n_enroll") %>% 
+  left_join(expected) %>% 
+  mutate(n_remain = n_expected - n_enroll) %>% 
+  select(-n_expected) %>% 
+  gather(key = "count_type", value = "count", -site)
+```
+
+```{r}
+by_site %>% 
+  ggplot(aes(x = fct_reorder(site, count), 
+             y = count, 
+             fill = fct_relevel(count_type, "n_remain", "n_enroll"))) +
+  geom_col(width = .5) +
+  scale_fill_viridis_d(option = "cividis", 
+                       begin = .2, 
+                       end = .9,
+                       direction = -1) +
+  coord_flip() +
+  labs(y = "Enrollment", fill = "", x = "Site") +
+  ggtitle("Enrolled and remaining participant counts by site")
+```
+
+```{r results='asis'}
+tableby(~ site, data = mockdata) %>% 
+  summary()
+```
+
+
+# Treatment arms
+
+The three treatment arms compared in this study are:
+
+<!--TODO: add markdown table of treatment arms here-->
+
+Almost half of our enrolled participants have been assigned to the `FOLFOX` arm.
+
+<!--TODO: make this print better with knitr::kable + code chunks-->
+
+```{r results='asis'}
+mockdata %>% 
+  tabyl(arm) %>% 
+  adorn_totals("row") %>%
+  adorn_pct_formatting() %>% 
+  knitr::kable(format = "markdown")
+```
+
+
+## Treatment arms by site
+
+Several sites have not recruited participants from one or more of the 3 treatment arms. These sites will need to be monitored for inclusion in the final analyses.
+
+```{r}
+mockdata %>% 
+  group_by(site) %>% 
+  summarize(n_arms = n_distinct(arm)) %>% 
+  arrange(n_arms) %>% 
+  filter(n_arms < 3) %>% 
+  knitr::kable()
+```
+
+In fact, most of our non-US sites have enrolled participants exclusively in the `FOLFOX` treatment arm. We will monitor the proportions of participants per arm for US versus non-US sites to ensure the validity of results and minimize possible confounding site-level factors.
+
+```{r}
+mockdata %>% 
+  count(site, arm) %>% 
+  add_count(site, wt = n, name = "total") %>% 
+  ggplot(aes(x = fct_reorder(site, total), y = n, fill = arm)) +
+  geom_col(width = .5) +
+  scale_fill_viridis_d(option = "cividis", 
+                       begin = .2, 
+                       end = .9,
+                       direction = -1) +
+  coord_flip() +
+  labs(x = "")
+```
+
+
+# Demographics
+
+<!--TODO: add age and bmi here-->
+
+```{r results='asis', layout="l-body-outset"}
+tableby(arm ~ sex + age + bmi, data = mockdata) %>% 
+  summary(digits = 2, 
+          digits.p = 2, 
+          digits.pct = 1, 
+          pfootnote = TRUE)
+```
+
+<!--TODO: decide which table one to make!-->
+
+```{r results='asis', layout="l-body-outset"}
+demo_tab <- CreateTableOne(
+  data = mockdata,
+  vars = c('age', 'hgb', 'race'),
+  factorVars = 'race',
+  strata = 'arm')
+demo_tab %>% 
+  kableone()
+```
+
+# Adverse events
+
+Adverse events have been low overall, affecting at most approximately 22.8% of patients (diarrhea in the `FOLFOX` arm). 
+
+For final reporting, we will follow [recent BMJ recommendations](https://www.bmj.com/content/355/bmj.i5078) that "adverse event reporting should include numerators and denominators for all events."
+
+```{r results='asis', layout="l-body-outset"}
+ae_tab <- mockdata %>% 
+  tableby(
+    arm ~ ae_blood_clot + ae_vomiting + ae_diarrhea + ae_neuropathy + ae_low_wbc, 
+    data = .) %>% 
+  summary(digits = 2, 
+          digits.p = 3, 
+          digits.pct = 1, 
+          pfootnote = TRUE)
+ae_tab
+```
+
+
+## Acknowledgments {.appendix}
+
+Our thanks to all the research participants and their families.
+
+## Author Contributions {.appendix}
+
+Peter Higgins did the majority of the site coordination, progress monitoring, and analyses presented in this report. Alison Hill did the visualizations and consulted on analyses. Daniel Chen contributed to all phases of the research project and to the preparation of this report.
+

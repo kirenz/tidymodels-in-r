@@ -1,0 +1,329 @@
+---
+title: "Tidymodels III: Build Models"
+subtitle: "Learn how to build models with tidymodels"
+author: "Prof. Dr. Jan Kirenz"
+output:
+ html_document:
+  code_download: true 
+  css: style.css 
+  fig_height: 6
+  fig_width: 8
+  highlight: tango
+  number_sections: yes
+  theme: paper
+  toc: yes
+  toc_depth: 3
+  toc_float: 
+    collapsed: false
+    smooth_scroll: true 
+  df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tidyverse)
+library(tidymodels)
+```
+
+
+```{r}
+library(tidyverse)
+
+ames <- read_csv("https://raw.githubusercontent.com/kirenz/datasets/master/ames.csv")
+
+ames <- ames %>%
+ select(-matches("Qu"))
+
+```
+
+
+# Recipes
+
+
+Creates a recipe for a set of variables:
+
+```{r}
+rec <- recipe(Sale_Price ~ ., data = ames)
+```
+
+
+## step_*()
+
+Adds a single transformation to a recipe. Transformations are replayed in order when the recipe of step * is run on data.
+
+```{r}
+
+rec %>%
+  step_novel(all_nominal()) %>% 
+  step_zv(all_predictors())
+
+```
+
+
+[`step_novel()`](https://recipes.tidymodels.org/reference/step_novel.html) creates a specification of a recipe step that will assign a previously unseen factor level to a new value. The selected variables are adjusted to have a new level (given by new_level) that is placed in the last position. During preparation there will be no data points associated with this new level since all of the data have been seen. Note that if the original columns are character, they will be converted to factors by this step. Missing values will remain missing.
+
+`step_zv()` creates a specification of a recipe step that will remove variables that contain only a single value.
+
+## selectors
+
+Helper functions for selecting sets of variables:
+
+* all_predictors(): Each x variable (right side of ~)
+* all_outcomes(): Each y variable (left side of ~)
+* all_numeric(): Each numeric variable
+* all_nominal(): Each categorical variable (e.g. factor, string)
+*dplyr::select() helpers starts_with('Lot_'), etc.
+
+
+## Combining selectors
+
+Use commas to separate
+
+```{r}
+
+rec %>%
+  step_novel(all_nominal(), -all_outcomes()) %>% 
+  step_zv(all_predictors())
+
+```
+
+How does recipes know what is a predictor and what is an outcome?
+
+* `rec <- recipe(Sale_Price ~ ., data = ames)`
+
+The formula `Sale_Price ~ .` indicates outcomes vs predictors.
+
+How does recipes know what is numeric and what is nominal?
+
+* The data is only used to catalog the names and types of each variable.
+
+
+## step_center()
+
+Centers numeric variables by subtracting the mean
+
+```{r}
+
+recipe(Sale_Price ~ .,data = ames) %>%
+  step_center(all_numeric())
+
+```
+
+
+## step_scale()
+
+Scales numeric variables by dividing by the standard deviation.
+
+```{r}
+
+recipe(Sale_Price ~ ., data = ames) %>%
+  step_center(all_numeric()) %>% 
+  step_scale(all_numeric())
+
+```
+
+
+## step_normalize()
+
+Centers then scales numeric variable (mean = 0, sd = 1)
+
+```{r}
+
+recipe(Sale_Price ~ ., data = ames) %>%
+  step_normalize(all_numeric())
+
+```
+
+
+## step_dummy()
+
+Converts nominal data into dummy variables which, numeric, are suitable for linear algebra.
+
+```{r}
+rec %>%
+ step_dummy(all_nominal())
+```
+
+
+
+## step_novel()
+
+Adds a catch-all level to a factor for any new values, which lets R intelligently predict new levels in the test set.
+
+```{r}
+
+rec %>% 
+  step_novel(all_nominal()) %>% 
+  step_dummy(all_nominal())
+
+```
+
+## step_zv()
+
+Intelligently handles zero variance variables (variables that contain only a single value)
+
+```{r}
+
+rec %>% 
+  step_novel(all_nominal()) %>% 
+  step_dummy(all_nominal()) %>% 
+  step_zv(all_predictors())
+
+```
+
+
+# PCS
+
+```{r}
+
+new_rec <-
+ recipe(Sale_Price ~ ., data = ames) %>%
+ step_novel(all_nominal()) %>%
+ step_dummy(all_nominal()) %>%
+ step_zv(all_predictors()) %>%
+ step_normalize(all_predictors())
+
+new_rec
+
+```
+
+
+```{r}
+summary(new_rec)
+```
+
+
+
+# Workflows
+
+## workflow()
+
+Creates a workﬂow to add a model and more to.
+
+`workflow()`
+
+
+## add_formula()
+
+Adds a formula to a workﬂow (If you do not plan to do your own preprocessing):
+
+
+```{r eval=FALSE}
+workflow() %>% 
+  add_formula(Sale_Price ~ Year)
+```
+
+
+## add_model()
+
+Adds a parsnip model spec to a workﬂow
+
+```{r}
+lm_spec <- 
+  linear_reg() %>% 
+  set_engine("lm") %>% 
+  set_mode(mode = "regression")
+```
+
+
+```{r eval=FALSE}
+
+workflow() %>%
+  add_model(lm_spec)
+
+```
+
+## Example
+
+
+```{r}
+new_wf <-
+ workflow() %>%
+ add_recipe(new_rec) %>%
+ add_model(lm_spec)
+
+new_wf
+
+```
+
+## Example
+
+```{r}
+# data split
+ames_split <- initial_split(ames) 
+ames_train <- training(ames_split) 
+ames_test <- testing(ames_split)
+```
+
+
+```{r}
+
+new_wf %>%
+ fit(data = ames_train) %>%
+ predict(ames_test) %>%
+ mutate(truth = ames_test$Sale_Price) %>%
+ rmse(truth, .pred)
+
+```
+
+Preprocess k-fold resamples?
+
+
+## fit_resamples()
+
+Fit a workﬂow that bundles a recipe* and a model with resampling.
+
+```{r}
+
+set.seed(100)
+
+ames_folds <- 
+  vfold_cv(ames_train, 
+           strata = Sale_Price, 
+           breaks = 4)
+
+new_wf %>%
+ fit_resamples(resamples = ames_folds) %>%
+ collect_metrics()
+
+```
+
+## update_recipe()
+
+Replace the recipe in a workﬂow.
+
+
+`pca_wf %>% update_recipe(other_rec)`
+
+
+## Example 5
+
+```{r}
+other_rec <- 
+  recipe(Sale_Price ~ ., data = ames) %>%
+  step_novel(all_nominal()) %>%
+  step_dummy(all_nominal()) %>%
+  step_zv(all_predictors()) %>%
+  step_normalize(all_predictors()) 
+```
+
+```{r}
+
+other_wf <- 
+  new_wf %>%
+  update_recipe(other_rec)
+```
+
+
+
+
+```{r}
+other_wf %>%
+  fit_resamples(resamples = ames_folds) %>%
+  collect_metrics()
+```
+

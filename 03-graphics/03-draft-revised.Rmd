@@ -1,0 +1,135 @@
+---
+title: "REVISED BUT STILL ROUGH DRAFT - Response and adverse events to chemotherapy: A mock study"
+author:
+- affiliation: University of Michigan
+  affiliation_url: https://www.uofmhealth.org/
+  name: Peter Higgins, MD, Ph.D.
+  url: https://www.uofmhealth.org/profile/4/peter-doyle-higgins-md-phd
+- affiliation: RStudio
+  affiliation_url: https://www.rstudio.com
+  name: Alison Hill, Ph.D.
+  url: https://alison.rbind.io
+- affiliation: Virginia Tech
+  name: Daniel Chen, MPH
+  url: https://chendaniely.github.io/
+date: "2019-09-12"
+output: 
+  bookdown::html_document2:
+    theme: flatly
+    toc: true
+    toc_float: true
+  distill::distill_article:
+    toc: true
+  bookdown::word_document2: default
+params:
+  palette: berlin
+---
+
+# Note
+
+Hi Peter & Daniel,
+
+Based on our meeting last week, here is an updated draft with the following changes:
+
+1. I added two figures to address our concerns about differences in the distribution of ages between male and female cases. 
+
+1. I also added in the complementary tables that help us meet current reporting guidelines.
+
+1. I removed the Nur-Sultan site (on advice of biostats-counsel).
+
+Could definitely use some cleaning up, but wanted to share my first pass with you both. Please let me know what you think, and feel free to edit away and fill in as you feel inspired!
+
+Thanks,  
+Alison
+
+P.S. I made this a parameterized report. Take a look at the [scico](https://github.com/thomasp85/scico) package for color palettes and play around with them by changing the `palette:` above (careful w/ YAML indents)- I couldn't decide! We probably have to do `palette: grayC` for the final journal but the colors could work for presentations.
+
+P.P.S. Daniel- I forgot the trick to make `arsenal::tableby()` print prettily in R Markdown. Can you help?
+
+P.P.P.S. I discovered that in Markdown I can insert a backslash on a line with spaces around it instead of using HTML to insert line breaks with `<br>`. It's the little things :)
+
+\
+
+```{r packages, include=FALSE}
+library(tidyverse)
+library(cowplot)
+library(arsenal)
+library(here)
+library(scico)
+ggplot2::theme_set(ggplot2::theme_minimal())
+```
+
+```{r load-data, include=FALSE}
+# excludes Nur-Sultan site
+mockdata <- read_csv(here::here("data/mockdata.csv")) %>% 
+  mutate_at(vars(starts_with("ae_")), ~as.factor(.)) %>% 
+  mutate(fu_fct = fct_recode(as.factor(fu_stat), 
+                             "Lived" = "1", 
+                             "Died" = "2")) %>% 
+  filter(!site == "Nur-Sultan")
+```
+
+All the code for these revised figures and tables can be found in the `R` folder.
+
+```{r}
+source(here::here("R/figs-revised.R"))
+source(here::here("R/tabs-revised.R"))
+```
+
+Here are all the figures and tables to play with, by which section I think they could go in:
+
+```{r}
+# demographics------------------------------------------------------------------
+age_density # multi-panel?
+age_boxplot # multi-panel?
+demo_tab
+
+# treatment response @ follow-up------------------------------------------------
+surv_pct_plot # multi-panel?
+surv_days_plot # multi-panel?
+fu_tab
+
+# adverse events----------------------------------------------------------------
+ae_pct_plot
+ae_tab
+
+# survival analysis-------------------------------------------------------------
+# peter to add plots and tables!
+```
+
+
+# Results
+
+\
+
+```{r include=FALSE}
+# sites
+sites <- mockdata %>% 
+  distinct(site) %>% 
+  pull()
+
+# arms
+arms <- mockdata %>% 
+  distinct(arm) %>% 
+  arrange(arm) %>% 
+  pull()
+```
+
+
+We recruited `r n_distinct(mockdata$case)` participants from `r n_distinct(mockdata$site)` centers across the XYZ Cancer Research Network between February 2002 and October 2008. Mock participants were mock randomly assigned to one of `r n_distinct(mockdata$arm)` treatments: `r knitr::combine_words(arms)`, in a 1:2:1 ratio for up to 24 weeks. 
+
+Suggestion for 3 results subsections below (before discussion begins):
+
++ Demographics
++ Treatment response
++ Adverse events
++ Survival analysis (to-be-added!)
+
+
+# Discussion
+
+<!--TODO-->
+
+
+<!--TODO: add cross-references to images & tables above-->
+

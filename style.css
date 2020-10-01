@@ -1,0 +1,21 @@
+h1 {
+  color: #D0313C;
+  font-size: 200%;
+}
+
+h2 {
+  color: #D0313C;
+  font-size: 150%;
+}
+
+h3 {
+  font-size: 120%;
+  font-weight: bold;
+}
+
+h4 {
+  color: rgb(139, 142, 150);
+  font-size: 100%;
+  font-weight: bold;
+
+}

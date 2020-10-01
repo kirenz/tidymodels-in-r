@@ -1,0 +1,365 @@
+---
+title: "Tidymodels I: Build a Model"
+subtitle: "Learn how to build models with tidymodels"
+author: "Prof. Dr. Jan Kirenz"
+output:
+ html_document:
+  code_download: true 
+  fig_height: 8
+  fig_width: 12
+  highlight: tango
+  number_sections: yes
+  theme: paper
+  toc: yes
+  toc_depth: 3
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+library(tidyverse)
+```
+
+This tutorial is based on Alisson Hill's excellent tidymodels workshop. 
+
+# Introduction
+
+## Ames Housing Data
+
+As data, we use 2,930 houses sold in Ames, IA from 2006 to 2010, collected by the Ames Assessor’s Oﬃce. 
+
+```{r}
+
+ames <- read_csv("https://raw.githubusercontent.com/kirenz/datasets/master/ames.csv")
+
+ames <- ames %>%
+ select(-matches("Qu"))
+
+```
+
+
+```{r}
+glimpse(ames)
+```
+
+
+## Linear regression
+
+```{r}
+lm_ames <- lm(Sale_Price ~ Gr_Liv_Area, data = ames)
+lm_ames
+```
+
+
+# Specify a model with parsnip
+
+1. Pick a `model`
+2. Set the `engine`
+3. Set the `mode` (if needed)
+
+```{r}
+
+library(tidymodels)
+
+decision_tree() %>% 
+  set_engine("C5.0") %>% 
+  set_mode("classification")
+
+```
+
+```{r}
+
+nearest_neighbor() %>% 
+  set_engine("kknn") %>% 
+  set_mode("regression")
+
+```
+
+
+## Pick a model
+
+All available models are listed at
+
+* [Models](https://www.tidymodels.org/find/parsnip/)
+
+Speciﬁes a model that uses linear regression:
+
+```{r}
+
+lm_spec_test <- 
+linear_reg(
+  mode = "regression", # default mode
+  penalty = NULL,
+  mixture = NULL
+  )
+
+```
+
+## Set the engine
+
+Adds an engine to power or implement the model.
+
+```{r}
+
+lm_spec_test %>%  
+  set_engine(engine = "lm")
+
+```
+
+
+## Set the mode (if needed)
+
+Sets the class of problem the model will solve, which inﬂuences which output is collected. Not necessary if mode is set in Step 1.
+
+```{r}
+
+lm_spec_test %>% 
+  set_mode(mode = "regression")
+
+```
+
+
+## Example 1
+
+```{r}
+
+lm_spec <- 
+  linear_reg() %>%  # model type
+  set_engine(engine = "lm") # engine
+
+lm_spec
+
+```
+
+Train a model by fitting a model. Returns a parsnip model ﬁt.
+
+```{r}
+
+fit(lm_spec, 
+    Sale_Price ~ Gr_Liv_Area, 
+    data = ames)
+
+```
+
+
+## Fit
+
+Train a model by fitting a model. Returns a parsnip model ﬁt.
+
+
+```{r}
+
+lm_fit <- 
+  fit(
+  lm_spec, # parsnip model 
+  Sale_Price ~ Gr_Liv_Area, # a formula 
+  data = ames # dataframe
+  )
+
+lm_fit
+```
+
+
+
+```{r}
+
+lm_spec %>% # parsnip model
+ fit(Sale_Price ~ Gr_Liv_Area, # a formula
+ data = ames # dataframe
+ )
+
+```
+
+## Example 2
+
+```{r}
+
+lm_fit
+
+lm(Sale_Price ~ Gr_Liv_Area, data = ames)
+
+```
+
+
+* data (x, y) + model = fitted model
+
+
+# Predict
+
+Use a fitted model to predict new y values from data. Returns a tibble:
+
+
+```{r}
+price_pred <- 
+  lm_fit %>% 
+  predict(new_data = ames) %>%
+  mutate(truth = ames$Sale_Price)
+
+price_pred
+
+```
+
+
+
+Generate new data:
+
+```{r}
+
+new_homes <- 
+  tibble(Gr_Liv_Area = c(334, 1126, 1442, 1500, 1743, 5642)) 
+
+lm_fit %>%
+ predict(new_data = new_homes)
+
+```
+
+## Example 3
+
+```{r}
+
+lm_fit <- 
+  lm_spec %>%
+  fit(Sale_Price ~ Gr_Liv_Area,
+ data = ames)
+
+price_pred <- 
+  lm_fit %>% 
+  predict(new_data = ames) %>% 
+  mutate(truth = ames$Sale_Price)
+
+```
+
+* data (x, y) + model = fitted model 
+ 
+* data (x) + fitted model = predictions
+
+
+# Goal of machine learning
+
+* Generate accurate predictions
+
+* Better Model = Better Predictions (Lower error rate)
+
+## RMSE
+
+Root Mean Squared Error - The standard deviation of the residuals about zero.
+
+
+$$rmse(data, truth, estimate)$$
+
+```{r}
+lm_fit <-
+  lm_spec %>%
+  fit(Sale_Price ~ Gr_Liv_Area,
+  data = ames)
+
+price_pred <-
+  lm_fit %>%
+  predict(new_data = ames) %>%
+  mutate(price_truth = ames$Sale_Price)
+
+price_pred %>% 
+  rmse(truth = price_truth, estimate = .pred)
+
+  
+```
+
+
+# Data splitting
+
+The best way to measure a model's performance at predicting new data is to predict new data.
+
+"Splits" data randomly into a single testing and a single training set.
+
+* `initial_split(data, prop = 3/4)`
+
+```{r}
+
+ames_split <- 
+  initial_split(ames, 
+                prop = 0.75) 
+
+ames_split
+```
+
+Extract training and testing sets from an rsplit (from `rsample`)
+
+```{r}
+
+training(ames_split) 
+
+```
+
+```{r}
+
+testing(ames_split)
+
+```
+
+
+```{r}
+
+train_set <- training(ames_split)
+
+
+```
+
+## Example 5
+
+```{r}
+
+set.seed(100) # Important!
+
+ames_split <-  initial_split(ames)
+ames_train <-  training(ames_split)
+ames_test <- testing(ames_split)
+                             
+lm_fit <- 
+  lm_spec %>% 
+  fit(Sale_Price ~ Gr_Liv_Area,
+      data = ames_train)
+
+price_pred <- 
+  lm_fit %>% 
+  predict(new_data = ames_test) %>% 
+  mutate(price_truth = ames_test$Sale_Price)
+
+rmse(price_pred, 
+     truth = price_truth, 
+     estimate = .pred)
+
+```
+
+* old data (x, y) + model = fitted model
+* new data (x) + fitted model = predictions 
+* new data (y) + predictions = metrics
+
+## Stratified sampling
+
+```{r}
+
+set.seed(100) # Important!
+
+ames_split <-  initial_split(ames,
+                             strata = Sale_Price,
+                             breaks = 4)
+
+ames_train <-  training(ames_split)
+ames_test <- testing(ames_split)
+                             
+lm_fit <- lm_spec %>% 
+  fit(Sale_Price ~ Gr_Liv_Area,
+      data = ames_train)
+
+price_pred <- lm_fit %>% 
+  predict(new_data = ames_test) %>% 
+  mutate(price_truth = ames_test$Sale_Price)
+
+rmse(price_pred, truth = price_truth, estimate = .pred)
+
+```
+
+

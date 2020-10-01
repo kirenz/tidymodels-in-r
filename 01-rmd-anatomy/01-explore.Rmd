@@ -1,0 +1,117 @@
+---
+title: 'Explore mockstudy data'
+date: '2019-09-12'
+author:
+- affiliation: Virginia Tech
+  name: Daniel Chen
+output: html_document
+---
+
+Hi Alison and Peter,
+
+This document summarizes current enrollment in this mock study as of `r rmarkdown::metadata$date`.
+
+We can meet to talk about next steps tomorrow-  
+Daniel
+
+
+```{r}
+library(here) # for file paths
+library(tidyverse) # for all else
+theme_set(theme_minimal())
+```
+
+```{r}
+mockdata <- read_csv(here("data/mockboston.csv"))
+```
+
+```{r}
+glimpse(mockdata)
+```
+
+# Summary
+
+Here is an overview of the data we have so far.
+
+```{r}
+# treatment arms
+mockdata %>% 
+  distinct(arm)
+
+# sites
+mockdata %>% 
+  distinct(site)
+
+# countries
+mockdata %>% 
+  distinct(country)
+```
+
+
+# Overall enrollment to date
+
+```{r}
+# saving this number
+n_sites <- n_distinct(mockdata$site)
+```
+
+Overall enrollment numbers include `r n_sites` `r ifelse(n_sites > 1, "sites", "site")`.
+
+
+```{r}
+mockdata %>% 
+  summarize(total_n = sum(n),
+            total_target = sum(n_target),
+            total_prop = total_n / total_target)
+```
+
+
+# By site
+
+```{r}
+by_site <- mockdata %>% 
+  group_by(site) %>% 
+  summarize(
+    total_site = sum(n),
+    total_target_site = sum(n_target),
+    prop_enroll = (total_site / total_target_site)
+    )
+```
+
+```{r}
+ggplot(by_site, 
+       aes(
+         x = site, 
+         y = prop_enroll, 
+         fill = site)) +
+  geom_col(show.legend = FALSE) +
+  scale_y_continuous(name = "Enrollment percentage",
+                     labels = scales::percent_format(accuracy = 1)) +
+  expand_limits(y = 1) +
+  coord_flip()
+```
+
+# By site and arm
+
+```{r}
+by_site_arm <- mockdata %>% 
+  group_by(site, arm) %>% 
+  summarize(
+    total_site_arm = sum(n),
+    total_target_site_arm = sum(n_target),
+    prop_enroll = (total_site_arm / total_target_site_arm)
+    )
+```
+
+```{r}
+ggplot(by_site_arm,
+       aes(x = site, 
+           y = prop_enroll, 
+           group = interaction(arm, site),
+           fill = arm)) +
+  geom_col(position = position_dodge()) +
+  scale_y_continuous(name = "Enrollment percentage",
+                     labels = scales::percent_format(accuracy = 1)) +
+  expand_limits(y = 1) 
+```
+
