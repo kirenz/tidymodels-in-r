@@ -527,35 +527,6 @@ flights_fit_lr_mode %>%
 
 ```
 
-### Decision tree
-
-```{r}
-
-flights_fit_dt_mode %>% 
-  pull_workflow_fit() %>% 
-  tidy()
-
-```
-
-### Random forest
-
-```{r}
-
-flights_fit_rf_mode %>% 
-  pull_workflow_fit() %>% 
-  tidy()
-
-```
-
-### XG Boost
-
-```{r}
-
-flights_fit_xgb_mode %>% 
-  pull_workflow_fit() %>% 
-  tidy()
-
-```
 
 
 
