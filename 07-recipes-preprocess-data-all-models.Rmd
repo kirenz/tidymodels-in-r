@@ -1,6 +1,6 @@
 ---
 title: "Tidymodels: Recipes & Classification Models"
-subtitle: "Learn how to build a classification model with tidymodels"
+subtitle: "Learn how to build classification models with tidymodels"
 author: "Prof. Dr. Jan Kirenz"
 output:
  html_document:
@@ -27,9 +27,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-*The following content is taken from the excellent [tidymodels documentation](https://www.tidymodels.org/start/recipes/).*
+*The following content is mainly based on the excellent [tidymodels documentation](https://www.tidymodels.org/start/recipes/).*
 
-In this tutorial, we’ll explore a tidymodels package, `recipes`, which is designed to help you preprocess your data before training your model. 
+In this tutorial, we’ll cover the process of building several classification models (Logistic Regression, Decision Tree, Random Forest and XG Boost) with the tidymodels package `recipes`, which is designed to help you preprocess your data before training your model. 
 
 Recipes are built as a series of preprocessing steps, such as:
 
@@ -42,9 +42,13 @@ and so on. If you are familiar with R’s formula interface, a lot of this might
 
 To use the code in this tutorial, you will need to install the following packages: 
 
-* `nycflights13`, 
-* `skimr`, and 
-* `tidymodels.`
+* `tidymodels` 
+* `C50`
+* `ranger`
+* `xgboost`
+* `nycflights13` 
+* `skimr`
+
 
 ```{r}
 
@@ -163,7 +167,7 @@ test_data  <- testing(data_split)
 
 # Create recipe and roles 
 
-To get started, let’s create a recipe for a classification model. Before training the models, we can use a recipe to create a few new predictors and conduct some preprocessing required by the model.
+Let’s create a recipe for a classification model. Before training the models, we can use a recipe to create a few new predictors and conduct some preprocessing required by the model.
 
 Let’s initiate a new recipe:
 
@@ -366,6 +370,7 @@ lr_mod <-
 ## Decision tree
 
 ```{r}
+library(C50)
 
 dt_mod <- 
   decision_tree() %>% 
@@ -377,6 +382,7 @@ dt_mod <-
 ## Random forest
 
 ```{r}
+library(ranger)
 
 rf_mod <- 
   rand_forest() %>% 
@@ -389,8 +395,7 @@ rf_mod <-
 ## Boosted tree (XGBoost)
 
 ```{r}
-
-#install.packages("xgboost")
+library(xgboost)
 
 xgb_mod <- 
   boost_tree() %>% 
@@ -399,7 +404,7 @@ xgb_mod <-
 
 ```
 
-## Recipe process
+# Recipe process
 
 We will want to use our recipe across several steps as we train and test our models. We will:
 
@@ -411,9 +416,9 @@ We will want to use our recipe across several steps as we train and test our mod
 
 To simplify this process, we can use a *model workflow*, which pairs a model and recipe together. This is a straightforward approach because different recipes are often needed for different models, so when a model and recipe are bundled, it becomes easier to train and test workflows. We’ll use the `workflow` package from tidymodels to bundle our parsnip model (lr_mod etc.) with our recipe (flights_rec).
 
-# Fit models
+## Fit models
 
-## Pair models and recipes
+Pair models and recipes
 
 ### Logistic regression
 
@@ -528,8 +533,6 @@ flights_fit_lr_mode %>%
 ```
 
 
-
-
 ## Summary
 
 Our goal was to predict whether a plane arrives more than 30 minutes late. We have just:
@@ -544,11 +547,11 @@ Our goal was to predict whether a plane arrives more than 30 minutes late. We ha
 
 The next step is to use the trained workflow (`flights_fit`) to predict with the unseen test data, which we will do with a single call to predict(). 
 
-# Prediction
+## Prediction
 
 The predict() method applies the recipe to the new data, then passes them to the fitted model.
 
-### Linear regression
+## Linear regression
 
 ```{r}
 
@@ -608,7 +611,7 @@ flights_pred_lr_mod %>%
 
 ## Model valuation
 
-Use the metrics() function to measure the performance of the model. It will automatically choose metrics appropriate for a given type of model. The function expects a tibble that contains the actual results (truth) and what the model predicted (estimate).
+Use the metrics() function to measure the performance of the model. It will automatically choose metrics appropriate for a given type of model. The function expects a tibble that contains the actual results (truth) and what the model predicted (estimate). In this example, we only use the data for our logistic regression.
 
 ```{r}
 
