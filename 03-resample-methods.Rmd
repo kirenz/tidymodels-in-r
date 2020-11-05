@@ -1,5 +1,5 @@
 ---
-title: "Tidymodels II: Resample Methods"
+title: "Tidymodels II: K-Fold Cross Validation"
 subtitle: "Learn how to build models with tidymodels"
 author: "Prof. Dr. Jan Kirenz"
 output:
@@ -29,7 +29,7 @@ library(tidyverse)
 library(tidymodels)
 ```
 
-This tutorial is based on Alisson Hill's excellent tidymodels workshop. 
+*This tutorial is based on Alisson Hill's excellent [tidymodels workshop](https://alison.rbind.io/tags/tidymodels/).* 
 
 # Import data
 
@@ -38,8 +38,11 @@ library(tidyverse)
 
 ames <- read_csv("https://raw.githubusercontent.com/kirenz/datasets/master/ames.csv")
 
-ames <- ames %>%
- select(-matches("Qu"))
+ames <- 
+  ames %>%
+  select(Sale_Price, Gr_Liv_Area)
+
+glimpse(ames)
 
 ```
 
@@ -48,12 +51,11 @@ ames <- ames %>%
 
 ## Model specification
 
-Build the model and calculate rmse:
+Build the model:
 
 ```{r}
 library(tidymodels)
 
-# model specification
 lm_spec <- 
   linear_reg() %>% 
   set_engine("lm") %>% 
@@ -64,185 +66,99 @@ lm_spec <-
 ## Data split
 
 ```{r}
-# data split
+set.seed(100)
+
 new_split <- initial_split(ames) 
 new_train <- training(new_split) 
 new_test <- testing(new_split)
+
 ```
 
-## Fit the model
+# Fit the model
 
 ```{r}
 
-# fit model 
-lm_spec %>%
- fit(Sale_Price ~ Gr_Liv_Area , data = new_train) %>%
+lm_fit <- 
+  lm_spec %>%
+  fit(Sale_Price ~ Gr_Liv_Area , data = new_train)
+
+```
+
+Make predictions and calculate the RMSE for our training data. 
+
+```{r}
+
+lm_fit %>% 
+ predict(new_train) %>%
+ mutate(truth = new_train$Sale_Price) %>%
+ rmse(truth, .pred)
+
+```
+
+
+# Evaluate model
+
+To further evaluate our simple Linear Regression model, let's build a validation set. Note that this process is usually used to compare the performance of multiple models and to tune hyperparameters. In this tutorial however, we only want to demonstrate the process and therefore only use one model.   
+
+We can build a set of k-Fold cross validation sets and use this set of resamples to estimate the performance of our model using the `fit_resamples()` function. Note that this function does not do any tuning of the model parameters. The function is only used for computing performance metrics across some set of resamples. It will fit our model `lm_spec` to each resample and evaluate on the heldout set from each resample. It is important to note, that the function does not even keep the models it trains. 
+
+First of all, we build a set of 10 validation folds with the function `vfold_cv` (we also use stratified sampling in this example):
+
+```{r}
+
+set.seed(100)
+
+cv_folds <-
+ vfold_cv(new_train, 
+          v = 10, 
+          strata = Sale_Price,
+          breaks = 4) 
+
+cv_folds
+
+```
+
+Next, let's fit the model on each of the 10 folds with `fit_resamples()` and store the results as `lm_res`:
+
+```{r}
+
+lm_res <-
+  lm_spec %>% 
+  fit_resamples(
+    Sale_Price ~ Gr_Liv_Area,
+    resamples = cv_folds
+    )
+
+```
+
+Now we can collect the performance metrics with `collect_metrics()`. The metrics show the average performance across all folds.
+
+```{r}
+
+lm_res %>% 
+  collect_metrics()
+
+```
+
+If we would be interested in the results of every split, we could use the option `summarize = FALSE`:
+
+```{r}
+lm_res %>% 
+  collect_metrics(summarize = FALSE)
+```
+
+
+# Evaluate final model
+
+Finally, let's use our testing data and see how we can expect this model to perform on new data.
+
+```{r}
+
+lm_fit %>% 
  predict(new_test) %>%
  mutate(truth = new_test$Sale_Price) %>%
  rmse(truth, .pred)
 
 ```
 
-
-# Estimate multiple models
-
-## RMSE with for loop
-
-Repeat this process 10 times and store rmse values:
-
-```{r}
-
-rmses <- vector(length = 10, mode = "double") 
-
-for (i in 1:10) {
-  
-  new_split <- initial_split(ames)
-  new_train <- training(new_split)
-  new_test <- testing(new_split)
-  rmses[i] <-
-    lm_spec %>%
-    fit(Sale_Price ~ Gr_Liv_Area, data = new_train) %>%
-    predict(new_test) %>%
-    mutate(truth = new_test$Sale_Price) %>%
-    rmse(truth, .pred) %>%
-    pull(.estimate)
- 
-}
-
-rmses
-  
-```
-
-## Average RMSE
-
-Convert values to dataframe:
-
-```{r}
-rmses %>% 
-  tibble::enframe(name = "rmse")
-```
-
-
-Calculate mean:
-
-```{r}
-mean(rmses)
-```
-
-This process is relatively complicated. Instead of using a for loop, we can use use a simple function: `vfold_cv()`
-
-# Cross-validation
-
-## vfold_cv()
-
-We perform a 10-fold cross-validation with the function `vfold_cv`:
-
-```{r}
-set.seed(100)
-
-cv_folds <-
- vfold_cv(ames, 
-          v = 10, 
-          strata = Sale_Price,
-          breaks = 4) 
-
-cv_folds
-```
-
-
-## Fit the model
-
-How to fit the model?
-
-```{r}
-
-split1 <- 
-  cv_folds %>% 
-  pluck("splits", 1) 
-
-split1_train <- training(split1)
-split1_test <- testing(split1)
-
-lm_spec %>% 
-  fit(Sale_Price ~ Gr_Liv_Area, data = split1_train) %>%
-  predict(split1_test) %>%
-  mutate(truth = split1_test$Sale_Price) %>%
-  rmse(truth, .pred)
-
-```
-
-This has to be repeated with split2 to split10 ... this would be complicated.
-
-## fit_resamples()
-
-Trains and tests a resampled model. 
-
-Option 1:
-
-```{r}
-
-fit_resamples(
- lm_spec,
- Sale_Price ~ Gr_Liv_Area,
- resamples = cv_folds
-)
-
-```
-
-Option 2:
-
-```{r}
-
-lm_spec %>% 
-  fit_resamples(
-    Sale_Price ~ Gr_Liv_Area,
-    resamples = cv_folds
-    )
-
-```
-
-```{r}
-lm_results <- 
-  lm_spec %>% 
-  fit_resamples(
-    Sale_Price ~ Gr_Liv_Area,
-    resamples = cv_folds
-    )
-```
-
-
-## collect_metrics()
-
-Unnest the metrics column from a tidymodels fit_resamples()
-
-```{r}
-
-lm_results %>% 
-  collect_metrics(summarize = TRUE)
-
-```
-
-* `summarize = TRUE`is the default; averages across folds.
-
-Calculation with `summarize = FALSE` gives us:
-
-```{r}
-lm_spec %>%
- fit_resamples(
- Sale_Price ~ Gr_Liv_Area,
- resamples = cv_folds
- ) %>%
- collect_metrics(summarize = FALSE)
-```
-
-
-```{r}
-set.seed(100)
-
-lm_spec %>%
-  fit_resamples(Sale_Price ~ Gr_Liv_Area,
-                resamples = cv_folds) %>%
-   collect_metrics()
-
-```
 
