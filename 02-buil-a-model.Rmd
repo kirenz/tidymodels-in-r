@@ -32,25 +32,21 @@ library(tidymodels)
 
 In this tutorial you will learn how to specify a model with the tidymodels package.
 
-As data, we use 2,930 houses sold in Ames, IA from 2006 to 2010, collected by the Ames Assessor’s Oﬃce. 
+As data, we use 2,930 houses sold in Ames, IA from 2006 to 2010, collected by the Ames Assessor’s Oﬃce. From this dataset, we only select our dependent variable (`Sale_Price`) and one predictor variable (`Gr_Liv_Area`).
 
 ```{r}
 library(tidyverse)
 
 ames <- read_csv("https://raw.githubusercontent.com/kirenz/datasets/master/ames.csv")
 
-# We only select our y (Sale_Price) and one x (Gr_Liv_Area) variable
 ames <- 
   ames %>%
   select(Sale_Price, Gr_Liv_Area)
 
-```
-
-```{r}
-
 glimpse(ames)
 
 ```
+
 
 # Simple process 
 
@@ -65,12 +61,12 @@ In this first example, we don't use data splitting.
 ```{r}
 library(tidymodels)
 
-lm_spec <- # your model type
+lm_spec <- # your model specification
   linear_reg() %>%  # model type
-  set_engine(engine = "lm") %>%  # engine
-  set_mode("regression") # mode
+  set_engine(engine = "lm") %>%  # model engine
+  set_mode("regression") # model mode
 
-# Show your model type
+# Show your model specification
 lm_spec
 
 ```
@@ -83,14 +79,14 @@ In the training process, you run an algorithm on data and thereby produce a mode
 
 ```{r}
 
-lm_fit <- # your model
+lm_fit <- # your fitted model
   fit( 
-  lm_spec, # your algorithm 
+  lm_spec, # your model specification 
   Sale_Price ~ Gr_Liv_Area, # a Linear Regression formula 
   data = ames # your data
   )
 
-# Show your model
+# Show your fitted model
 lm_fit
 
 ```
@@ -140,9 +136,9 @@ rmse(data = price_pred,
 
 # Process with data splitting
 
-The best way to measure a model's performance at predicting new data is to predict new data.
+The best way to measure a model's performance at predicting new data is to actually predict new data.
 
-This function "splits" data randomly into a single testing and a single training set: `initial_split(data, prop = 3/4, strata, breaks)`. We also use stratified sampling in this example.
+This function "splits" data randomly into a single testing and a single training set: `initial_split(data, prop = 3/4, strata, breaks)`. We also use [stratified sampling](https://en.wikipedia.org/wiki/Stratified_sampling) in this example.
 
 ## Data splitting
 
