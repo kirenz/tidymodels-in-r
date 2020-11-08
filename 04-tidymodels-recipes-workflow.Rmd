@@ -45,11 +45,12 @@ To combine all of the steps discussed above with model building, we can use the 
 To use the code in this tutorial, you will need to install the following packages: 
 
 * `nycflights13`, 
-* `skimr`, and 
-* `tidymodels.`
+* `skimr`, 
+* `tidymodels` and
+* `tidyverse`
 
 ```{r}
-
+library(tidyverse)
 library(tidymodels)  
 # for flight data:
 library(nycflights13)
@@ -102,6 +103,15 @@ flight_data <- sample_n(flight_data_all,
                         10000)
 
 ```
+
+Let's save the sample data (we will use it again in the following tutorial):
+
+```{r}
+
+write_csv(flight_data, file = "flight_Data.csv")
+
+```
+
 
 We can see that around 16% of the flights in this data set arrived more than 30 minutes late:
 
