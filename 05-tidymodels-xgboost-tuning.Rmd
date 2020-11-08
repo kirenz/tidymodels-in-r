@@ -29,94 +29,31 @@ library(scales)
 library(tidyverse)
 library(tidymodels)
 library(nycflights13)
+library(vip)
 
 ```
 
 
-This tutorial is based on Julia Silges excellent [demonstration](https://www.r-bloggers.com/2020/05/tune-xgboost-with-tidymodels-and-tidytuesday-beach-volleyball/) on how to use the tidymodels framework to tune XGBoost with tidymodels and the [tidymodels documentation](https://www.tidymodels.org/start/recipes/).*
+*This tutorial is based on Julia Silge's excellent [demonstration](https://www.r-bloggers.com/2020/05/tune-xgboost-with-tidymodels-and-tidytuesday-beach-volleyball/) on how to use the tidymodels framework to tune XGBoost and the [tidymodels documentation](https://www.tidymodels.org/start/recipes/).*
 
-# Explore the data
 
-Our modeling goal is to predict whether a beach volleyball team of two won their match based on [game play stats like errors, blocks, attacks, etc from this week's #TidyTuesday dataset](https://github.com/rfordatascience/tidytuesday/blob/master/data/2020/2020-05-19/readme.md) . 
+Let's tune a XGBoost model using the `nycflights13` data to predict whether a plane arrives more than 30 minutes late. The data set contains information on flights departing near New York City in 2013. Furthermore, it contains weather data (hourly meterological data for LGA, JFK and EWR).
 
-This dataset is quite extensive so it's a great opportunity to try a more powerful machine learning algorithm like XGBoost. This model has lots of tuning parameters!
+Let’s start by loading the data.
 
-## Data import
+
+# Data import
 
 ```{r}
-vb_matches <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-05-19/vb_matches.csv', guess_max = 76000)
 
-vb_matches
-```
+link <- 'https://raw.githubusercontent.com/kirenz/tidymodels-in-r/main/df_flight_prep.csv'
 
-## Data transformation
+flight_data <- read_csv(link)
 
-This dataset has the match stats like serve errors, kills, and so forth divided out by the two players for each team, but we want those combined together because we are going to make a prediction **per team** (i.e. what makes a team more likely to win). Let's include predictors like gender, circuit, and year in our model along with the per-match statistics. Let's omit matches with `NA` values because we don't have all kinds of statistics measured for all matches.
-
-```{r}
-vb_parsed <- vb_matches %>%
-  transmute(
-    circuit,
-    gender,
-    year,
-    w_attacks = w_p1_tot_attacks + w_p2_tot_attacks,
-    w_kills = w_p1_tot_kills + w_p2_tot_kills,
-    w_errors = w_p1_tot_errors + w_p2_tot_errors,
-    w_aces = w_p1_tot_aces + w_p2_tot_aces,
-    w_serve_errors = w_p1_tot_serve_errors + w_p2_tot_serve_errors,
-    w_blocks = w_p1_tot_blocks + w_p2_tot_blocks,
-    w_digs = w_p1_tot_digs + w_p2_tot_digs,
-    l_attacks = l_p1_tot_attacks + l_p2_tot_attacks,
-    l_kills = l_p1_tot_kills + l_p2_tot_kills,
-    l_errors = l_p1_tot_errors + l_p2_tot_errors,
-    l_aces = l_p1_tot_aces + l_p2_tot_aces,
-    l_serve_errors = l_p1_tot_serve_errors + l_p2_tot_serve_errors,
-    l_blocks = l_p1_tot_blocks + l_p2_tot_blocks,
-    l_digs = l_p1_tot_digs + l_p2_tot_digs
-  ) %>%
-  na.omit()
-```
-
-Still plenty of data! Next, let's create separate dataframes for the winners and losers of each match, and then bind them together. I am using functions like `rename_with()` from [dplyr](https://www.tidyverse.org/blog/2020/05/dplyr-1-0-0-last-minute-additions/).
-
-```{r}
-winners <- vb_parsed %>%
-  select(circuit, gender, year,
-         w_attacks:w_digs) %>%
-  rename_with(~ str_remove_all(., "w_"), w_attacks:w_digs) %>%
-  mutate(win = "win")
-
-losers <- vb_parsed %>%
-  select(circuit, gender, year,
-         l_attacks:l_digs) %>%
-  rename_with(~ str_remove_all(., "l_"), l_attacks:l_digs) %>%
-  mutate(win = "lose")
-
-vb_df <- bind_rows(winners, losers) %>%
-  mutate_if(is.character, factor)
+flight_data
 
 ```
 
-Exploratory data analysis is always important before modeling. Let's make one plot to explore the relationships in this data.
-
-## Boxplots
-
-```{r}
-vb_df %>%
-  pivot_longer(attacks:digs, 
-               names_to = "stat", 
-               values_to = "value") %>%
-  ggplot(aes(gender, value, 
-             fill = win, 
-             color = win)) +
-  geom_boxplot(alpha = 0.4) +
-  facet_wrap(~stat, 
-             scales = "free_y", 
-             nrow = 2) +
-  labs(y = NULL, color = NULL, fill = NULL)
-```
-
-We can see differences in errors and blocks especially. There are lots more great examples of #TidyTuesday EDA out there to explore on [Twitter](https://twitter.com/hashtag/TidyTuesday)!
 
 # Build a model
 
@@ -128,26 +65,26 @@ We can start by loading the tidymodels metapackage, and splitting our data into 
 library(tidymodels)
 
 set.seed(123)
-vb_split <- initial_split(vb_df, strata = win)
+flight_split <- initial_split(flight_data)
 
-#vb_split$id <- tibble(id = "Resample1")
+#flight_split$id <- tibble(id = "Resample1")
 
-vb_train <- training(vb_split)
-vb_test <- testing(vb_split)
+flight_train <- training(flight_split)
+flight_test <- testing(flight_split)
 
 ```
 
 ## XGBoost hyperparamter
 
-An XGBoost model is based on trees, so we don't need to do much preprocessing for our data; we don't need to worry about the factors or centering or scaling our data. Let's just go straight to setting up our model specification. Sounds great, right? On the other hand, we are going to tune **a lot** of model hyperparameters.
+An XGBoost model is based on trees, so we don't need to do much preprocessing for our data; we don't need to worry about the factors or centering or scaling our data. Instead, we are going to tune model hyperparameters. Note that due to performance reasons, we set the size of some tuning parameters to relatively low numbers.
 
 
 ```{r}
-
+# To get an overview of the hyperparamters:
 # ?boost_tree
 
 xgb_spec <- boost_tree(
-  trees = 10, # usually we woul set this to 1000
+  trees = 10, # usually we would set this to a higher value, like 1000
   tree_depth = tune(), # tune placeholder
   min_n = tune(), 
   loss_reduction = tune(),  ## first three: model complexity
@@ -181,21 +118,23 @@ xgb_spec
 
 ## Grid space
 
-Let's set up possible values for these hyperparameters to try. Let's use a space-filling design so we can cover the hyperparameter space as well as possible.
+Let's set up possible values for these hyperparameters to try. 
 
-Option 1: (would take a long time)
+* Option 1: Grid Search (would take a long time)
 
 ```{r}
 # ?grid_regular
 ```
 
-Option 2: Space filling design (more efficient). 
+* Option 2: Space filling design (more efficient). 
 
 ```{r}
 #?grid_latin_hypercube
 ```
 
-Due to performance reasons we set the size to a very low number (3). In a real world scenario, we would probably use 50 to 100.
+We use a space-filling design so we can cover the hyperparameter space as well as possible.
+
+Due to performance reasons we set the size to a low number (20). In a real world scenario, we would probably use 50 to 100.
 
 ```{r}
 
@@ -204,12 +143,13 @@ xgb_grid <- grid_latin_hypercube(
   min_n(),
   loss_reduction(),
   sample_size = sample_prop(), # needs to be a proportion
-  finalize(mtry(), vb_train), 
+  finalize(mtry(), flight_train), 
   learn_rate(),
-  size = 3 # usually we would set this to a higher number
+  size = 20 # usually we would set this to a higher number
 )
 
 xgb_grid
+
 ```
 
 Notice that we had to treat `mtry()` differently because it depends on the actual number of predictors in the data.
@@ -223,11 +163,13 @@ mtry() # biggest possible number of mtry is unknown
 Let's put the model specification into a workflow for convenience. Since we don't have any complicated data preprocessing, we can use `add_formula()` as our data preprocessor.
 
 ```{r}
+
 xgb_wf <- workflow() %>%
-  add_formula(win ~ .) %>%
+  add_formula(arr_delay ~ .) %>%
   add_model(xgb_spec)
 
 xgb_wf
+
 ```
 
 ## Cross-validation
@@ -238,9 +180,9 @@ Next, let's create cross-validation resamples for tuning our model. Usually we w
 ```{r}
 set.seed(123)
 
-vb_folds <- vfold_cv(vb_train, 
+vb_folds <- vfold_cv(flight_train, 
                      v = 5,
-                     strata = win)
+                     strata = arr_delay)
 
 vb_folds
 
@@ -264,9 +206,10 @@ xgb_res <- tune_grid(
 )
 
 xgb_res
+
 ```
 
-This could take a a while to finish.
+
 
 # Explore results
 
@@ -275,7 +218,9 @@ This could take a a while to finish.
 We can explore the metrics for all these models.
 
 ```{r}
+
 collect_metrics(xgb_res)
+
 ```
 
 ## ROC
@@ -299,7 +244,6 @@ xgb_res_long %>%
   labs(x = NULL, y = "AUC")
 ```
 
-Remember that we used a space-filling design for the parameters to try. It looks like higher values for tree depth were better, but other than that, the main thing I take away from this plot is that there are several combinations of parameters that perform well.
 
 ## Show best parameters
 
@@ -323,7 +267,6 @@ best_auc
 ```
 
 
-
 ## Finalize workflow
 
 Now let's finalize our tuneable workflow with these parameter values.
@@ -339,58 +282,120 @@ final_xgb
 
 ```
 
-
 Instead of `tune()` placeholders, we now have real values for all the model hyperparameters.
+
+Fit the final model on the training data:
+
+```{r}
+
+final_fit_xgb <- 
+  final_xgb %>%
+  fit(data = flight_train)
+
+```
+
 
 ## Variable importance plot
 
-What are the most important parameters for [variable importance](https://koalaverse.github.io/vip/)?
+To obtain information about the most important parameters in our model, we use a variable importance plot from the [vip package](https://koalaverse.github.io/vip/). 
 
 ```{r fig.width=7, fig.height=6}
 library(vip)
 
-final_xgb %>%
-  fit(data = vb_train) %>%
+final_fit_xgb %>%
   pull_workflow_fit() %>%
   vip(geom = "point") # variable importance plot
 
 ```
 
-The predictors that are most important in a team winning vs. losing their match are the number of kills, errors, and attacks. There is almost no difference between the two circuits, and very little difference by gender.
-
+The predictors that are most important are shown at the top of the plot.
 
 
 # Evaluate model 
 
-## Last fit
+It's time to go back to the testing set. Let's _evaluate_ our model one last time on the testing set. 
 
-It's time to go back to the testing set. Let's use `last_fit()` to _fit_ our model one last time on the training data and _evaluate_ our model one last time on the testing set. Notice that this is the first time we have used the testing data during this whole modeling analysis.
 
 ```{r}
-final_res <- last_fit(final_xgb, split = vb_test)
+
+final_res_pred <- 
+  predict(final_fit_xgb, 
+          flight_test, 
+          type = "prob") %>% 
+  bind_cols(flight_test %>% 
+              select(arr_delay, 
+                     time_hour, 
+                     flight)) 
+
+```
+
+
+```{r}
+final_res <- last_fit(final_xgb, split = flight_test)
 
 collect_metrics(final_res)
 ```
 
 Our results here indicate that we did not overfit during the tuning process. We can also create a ROC curve for the testing set.
 
-
-
 ## ROC
 
 ```{r, fig.width=6, fig.height=6}
 
-final_res_pred <- 
-  final_res %>%
-  collect_predictions() %>%
-  roc_curve(win, .pred_win)
+final_res_pred %>%
+   roc_curve(truth = arr_delay, 
+            .pred_late) %>% 
+  autoplot()
   
-final_res_pred %>% 
-  ggplot(aes(x = 1 - specificity, y = sensitivity)) +
-  geom_line(size = 1.5, color = "midnightblue") +
-  geom_abline(
-    lty = 2, alpha = 0.5,
-    color = "gray50",
-    size = 1.2
-  )
 ```
+
+
+### AUC
+
+Similarly, `roc_auc()` estimates the area under the curve:
+
+```{r}
+
+final_res_pred %>% 
+  roc_auc(truth = arr_delay, .pred_late)
+
+```
+
+
+### Accuracy
+
+We use the `metrics()` function to measure the performance of the model. It will automatically choose metrics appropriate for a given type of model. The function expects a tibble that contains the actual results (truth) and what the model predicted (estimate).
+
+```{r}
+
+final_res_pred %>%
+  metrics(truth = arr_delay, 
+          estimate = .pred_class)
+
+```
+
+
+### Recall 
+
+```{r}
+
+flights_fit_lr_mode %>%
+  predict(test_data) %>%
+    bind_cols(test_data) %>%
+  recall(truth = arr_delay, 
+          estimate = .pred_class)
+
+```
+
+### Precision
+
+```{r}
+
+flights_fit_lr_mode %>%
+  predict(test_data) %>%
+    bind_cols(test_data) %>%
+  precision(truth = arr_delay, 
+          estimate = .pred_class)
+
+```
+

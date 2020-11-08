@@ -67,7 +67,7 @@ Let’s start by loading the data and making a few changes to the variables:
 
 ```{r}
 
-flight_data_all <- 
+flight_data <- 
   flights %>% 
   mutate(
     # Convert the arrival delay to a factor
@@ -94,26 +94,8 @@ flight_data_all <-
 
 ```
 
-To speed up later calculations we only use a sample of the data:
 
-```{r}
-set.seed(123)
-
-flight_data <- sample_n(flight_data_all, 
-                        10000)
-
-```
-
-Let's save the sample data (we will use it again in the following tutorial):
-
-```{r}
-
-write_csv(flight_data, file = "flight_Data.csv")
-
-```
-
-
-We can see that around 16% of the flights in this data set arrived more than 30 minutes late:
+Take a look at the proportion of flights which arrived more than 30 minutes late:
 
 ```{r}
 
@@ -148,7 +130,7 @@ flight_data %>%
 ```
 
 
-Because we’ll be using a logistic regression model in this tutorial, the variables `dest` and `carrier` will be converted to dummy variables. 
+Because we’ll be using a logistic regression model in this tutorial (among other models), the variables `dest` and `carrier` will be converted to dummy variables. 
 
 However, some of these values do not occur very frequently and this could complicate our analysis. We’ll discuss specific steps later in this tutorial that we can add to our recipe to address this issue before modeling.
 
@@ -361,7 +343,28 @@ flights_rec <-
 ```
 
 
-Now we’ve created a specification of what should be done with the data. 
+Now we’ve created a specification of what should be done with the data. Note that we did not perform any data processsing so far. 
+
+If we would like to save a copy of the preprocessed data, we would need to proceed as follow:
+
+* First of all, we need to `prep()` the recipe. This funtion will actually perform the data processing from the recipe. 
+* Then, we use the function `juice()` to obtain the data frame.
+* Finally, we can save the data.
+
+```{r}
+
+# Perform the recipe with prep()
+flights_prep <- 
+  flights_rec %>% 
+  prep()
+
+# Obtain data with juice()
+df_flight_prep <- juice(flights_prep)
+
+# Save data as csv
+write_csv(df_flight_prep, "df_flight_prep.csv")
+
+```
 
 # Model building
 
