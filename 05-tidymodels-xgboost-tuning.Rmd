@@ -1,6 +1,6 @@
 ---
-title: "Tidymodels V: Tune Models"
-subtitle: "Learn how to build models with tidymodels, Part 5"
+title: "Tidymodels V: Tune Models (XGBoost)"
+subtitle: "Learn how to tune models with tidymodels, Part 5"
 author: "Prof. Dr. Jan Kirenz"
 output:
  html_document:
@@ -28,7 +28,6 @@ knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE,
 library(scales)
 library(tidyverse)
 library(tidymodels)
-library(nycflights13)
 library(vip)
 
 ```
@@ -37,12 +36,9 @@ library(vip)
 *This tutorial is based on Julia Silge's excellent [demonstration](https://www.r-bloggers.com/2020/05/tune-xgboost-with-tidymodels-and-tidytuesday-beach-volleyball/) on how to use the tidymodels framework to tune XGBoost and the [tidymodels documentation](https://www.tidymodels.org/start/recipes/).*
 
 
-Let's tune a XGBoost model using the `nycflights13` data to predict whether a plane arrives more than 30 minutes late. The data set contains information on flights departing near New York City in 2013. Furthermore, it contains weather data (hourly meterological data for LGA, JFK and EWR).
+In this tutorial, we will tune a XGBoost model using flight data to predict whether a plane arrives more than 30 minutes late. The data set contains information on flights departing near New York City in 2013. Furthermore, it contains weather data (hourly meterological data for LGA, JFK and EWR).
 
 Let’s start by loading the data.
-
-
-# Data import
 
 ```{r}
 
@@ -50,47 +46,53 @@ link <- 'https://raw.githubusercontent.com/kirenz/tidymodels-in-r/main/df_flight
 
 flight_data <- read_csv(link)
 
-flight_data
+glimpse(flight_data)
+
+flight_data$arr_delay <- as.factor(flight_data$arr_delay)
 
 ```
 
 
-# Build a model
+# Data splitting
 
-We can start by loading the tidymodels metapackage, and splitting our data into training and testing sets.
-
-## Data splitting
+We can start by splitting our data into training and testing sets.
 
 ```{r}
 library(tidymodels)
-
 set.seed(123)
+
 flight_split <- initial_split(flight_data)
-
-#flight_split$id <- tibble(id = "Resample1")
-
 flight_train <- training(flight_split)
 flight_test <- testing(flight_split)
 
 ```
 
-## XGBoost hyperparamter
+# Model building
 
-An XGBoost model is based on trees, so we don't need to do much preprocessing for our data; we don't need to worry about the factors or centering or scaling our data. Instead, we are going to tune model hyperparameters. Note that due to performance reasons, we set the size of some tuning parameters to relatively low numbers.
+We want to build a XGBoost model and tune the model hyperparameters. To get an overview of the hyperparamters, use the following funtion in R:
 
+```{r eval=FALSE}
+
+?boost_tree
+
+```
+
+## Specify model
+
+Note that due to performance reasons, we set the size of some tuning parameters to relatively low numbers.
 
 ```{r}
-# To get an overview of the hyperparamters:
-# ?boost_tree
 
-xgb_spec <- boost_tree(
+
+xgb_spec <- 
+  boost_tree(
   trees = 10, # usually we would set this to a higher value, like 1000
-  tree_depth = tune(), # tune placeholder
+  tree_depth = tune(), 
   min_n = tune(), 
-  loss_reduction = tune(),  ## first three: model complexity
+  loss_reduction = tune(), 
   sample_size = tune(), 
-  mtry = tune(),  ## randomness
-  learn_rate = tune(),    ## step size
+  mtry = tune(), 
+  learn_rate = tune(),    
 ) %>% 
   set_engine("xgboost") %>% 
   set_mode("classification")
@@ -116,23 +118,9 @@ xgb_spec
 
 * stop_iter: The number of iterations without improvement before stopping.
 
-## Grid space
+## Grid search
 
-Let's set up possible values for these hyperparameters to try. 
-
-* Option 1: Grid Search (would take a long time)
-
-```{r}
-# ?grid_regular
-```
-
-* Option 2: Space filling design (more efficient). 
-
-```{r}
-#?grid_latin_hypercube
-```
-
-We use a space-filling design so we can cover the hyperparameter space as well as possible.
+Let's set up possible values for these hyperparameters to try. We could use a [regular grid search](https://dials.tidymodels.org/reference/grid_regular.html) but that would take a long time. Instead, we use a space filling design called [`grid_latin_hypercube()`](https://dials.tidymodels.org/reference/grid_max_entropy.html), which is more efficient. It uses random sampling of points in the parameter space.
 
 Due to performance reasons we set the size to a low number (20). In a real world scenario, we would probably use 50 to 100.
 
@@ -174,7 +162,7 @@ xgb_wf
 
 ## Cross-validation
 
-Next, let's create cross-validation resamples for tuning our model. Usually we would set v to 10 but due to performance reasons, we choose 5.
+Next, let's create cross-validation resamples for tuning our model. Usually we would set "v" to 10 but due to performance reasons, we choose 5.
 
 
 ```{r}
@@ -192,9 +180,9 @@ vb_folds
 
 We use `tune_grid()` with our tuneable workflow, our resamples, and our grid of parameters to try. Let's use `control_grid(save_pred = TRUE)` so we can explore the predictions afterwards.
 
-```{r}
+Note that this can take a while to process...
 
-doParallel::registerDoParallel() # optimize processing
+```{r}
 
 set.seed(234)
 
@@ -211,9 +199,9 @@ xgb_res
 
 
 
-# Explore results
+## Explore results
 
-## Metrics
+### Metrics
 
 We can explore the metrics for all these models.
 
@@ -223,12 +211,14 @@ collect_metrics(xgb_res)
 
 ```
 
-## ROC
+### ROC
 
 We can also use visualization to understand our results. Reshape the data to make a graph.
 
 ```{r}
-xgb_res_long <-  xgb_res %>% 
+
+xgb_res_long <-  
+  xgb_res %>% 
   collect_metrics() %>%
   filter(.metric == "roc_auc") %>%
   select(mean, mtry:sample_size) %>%
@@ -242,19 +232,25 @@ xgb_res_long %>%
   geom_point(alpha = 0.8, show.legend = FALSE) +
   facet_wrap(~parameter, scales = "free_x") +
   labs(x = NULL, y = "AUC")
+
 ```
 
 
-## Show best parameters
 
-What are the best performing sets of parameters?
+## Find best model
+
+
+### Show best parameters
+
+What are the best performing sets of parameters:
 
 ```{r}
 show_best(xgb_res, 
           "roc_auc")
 ```
 
-## Select best parameters
+
+### Select best parameters
 
 There may have been lots of parameters, but we were able to get good performance with several different combinations. Let's choose the best one.
 
@@ -269,7 +265,7 @@ best_auc
 
 ## Finalize workflow
 
-Now let's finalize our tuneable workflow with these parameter values.
+Now let's finalize our tuneable workflow with the best parameter values.
 
 ```{r}
 
@@ -284,6 +280,8 @@ final_xgb
 
 Instead of `tune()` placeholders, we now have real values for all the model hyperparameters.
 
+### Fit final model
+
 Fit the final model on the training data:
 
 ```{r}
@@ -294,8 +292,6 @@ final_fit_xgb <-
 
 ```
 
-
-## Variable importance plot
 
 To obtain information about the most important parameters in our model, we use a variable importance plot from the [vip package](https://koalaverse.github.io/vip/). 
 
@@ -311,7 +307,7 @@ final_fit_xgb %>%
 The predictors that are most important are shown at the top of the plot.
 
 
-# Evaluate model 
+## Evaluate model 
 
 It's time to go back to the testing set. Let's _evaluate_ our model one last time on the testing set. 
 
@@ -322,6 +318,11 @@ final_res_pred <-
   predict(final_fit_xgb, 
           flight_test, 
           type = "prob") %>% 
+  mutate(pred_arr_delay = case_when(
+            .pred_late >= 0.5 ~ "late",
+            TRUE ~ "on_time"),
+          pred_arr_delay = as.factor(pred_arr_delay)
+          ) %>% 
   bind_cols(flight_test %>% 
               select(arr_delay, 
                      time_hour, 
@@ -329,16 +330,7 @@ final_res_pred <-
 
 ```
 
-
-```{r}
-final_res <- last_fit(final_xgb, split = flight_test)
-
-collect_metrics(final_res)
-```
-
-Our results here indicate that we did not overfit during the tuning process. We can also create a ROC curve for the testing set.
-
-## ROC
+### ROC
 
 ```{r, fig.width=6, fig.height=6}
 
@@ -352,12 +344,13 @@ final_res_pred %>%
 
 ### AUC
 
-Similarly, `roc_auc()` estimates the area under the curve:
+`roc_auc()` estimates the area under the curve:
 
 ```{r}
 
 final_res_pred %>% 
-  roc_auc(truth = arr_delay, .pred_late)
+  roc_auc(truth = arr_delay, 
+          .pred_late)
 
 ```
 
@@ -370,7 +363,7 @@ We use the `metrics()` function to measure the performance of the model. It will
 
 final_res_pred %>%
   metrics(truth = arr_delay, 
-          estimate = .pred_class)
+          estimate = pred_arr_delay)
 
 ```
 
@@ -379,11 +372,9 @@ final_res_pred %>%
 
 ```{r}
 
-flights_fit_lr_mode %>%
-  predict(test_data) %>%
-    bind_cols(test_data) %>%
+final_res_pred %>%
   recall(truth = arr_delay, 
-          estimate = .pred_class)
+          estimate = pred_arr_delay)
 
 ```
 
@@ -391,11 +382,9 @@ flights_fit_lr_mode %>%
 
 ```{r}
 
-flights_fit_lr_mode %>%
-  predict(test_data) %>%
-    bind_cols(test_data) %>%
+final_res_pred %>%
   precision(truth = arr_delay, 
-          estimate = .pred_class)
+          estimate = pred_arr_delay)
 
 ```
 
