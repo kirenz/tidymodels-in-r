@@ -8,3 +8,6 @@ R Code:
 * [04 Workflow & Classification Models](http://htmlpreview.github.io/?https://github.com/kirenz/tidymodels-in-r/blob/main/04-tidymodels-recipes-workflow.html
 ), In this tutorial, we’ll explore the Tidymodels package with multiple classification models. We use recipes and workflows which are designed to help you preprocess your data before training your model.
  
+* [05 Tune Models (XGBoost)](http://htmlpreview.github.io/?https://github.com/kirenz/tidymodels-in-r/blob/main/05-tidymodels-xgboost-tuning.html
+), In this tutorial, we will tune a XGBoost model using flight data to predict whether a plane arrives more than 30 minutes late.
+ 
