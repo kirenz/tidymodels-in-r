@@ -11,3 +11,6 @@ R Code:
 * [05 Tune Models (XGBoost)](http://htmlpreview.github.io/?https://github.com/kirenz/tidymodels-in-r/blob/main/05-tidymodels-xgboost-tuning.html
 ), In this tutorial, we will tune a XGBoost model using flight data to predict whether a plane arrives more than 30 minutes late.
  
+ * [06 Lasso Regression)](http://htmlpreview.github.io/?https://github.com/kirenz/tidymodels-in-r/blob/main/05-tidymodels-xgboost-tuning.html
+), In this tutorial, we will tune a Lasso model.
+ 
