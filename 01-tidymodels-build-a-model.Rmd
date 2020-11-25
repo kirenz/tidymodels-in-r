@@ -106,19 +106,6 @@ head(price_pred)
 
 ```
 
-If we would want to make predictions for new houses, we could proceed as follows: 
-
-```{r}
-
-# New values (our x variable)
-new_homes <- 
-  tibble(Gr_Liv_Area = c(334, 1126, 1442, 1500, 1743, 5642)) 
-
-# Prediction for new houses (predict y)
-lm_fit %>%
- predict(new_data = new_homes)
-
-```
 
 
 ## Model evaluation 
@@ -132,6 +119,23 @@ rmse(data = price_pred,
      estimate = .pred)
 
 ```
+
+
+
+Note: if we would want to make predictions for new houses, we could proceed as follows: 
+
+```{r}
+
+# New values (our x variable)
+new_homes <- 
+  tibble(Gr_Liv_Area = c(334, 1126, 1442, 1500, 1743, 5642)) 
+
+# Prediction for new houses (predict y)
+lm_fit %>%
+ predict(new_data = new_homes)
+
+```
+
 
 
 # Process with data splitting
@@ -182,7 +186,7 @@ lm_fit_2 <-
 ```{r}
  
 price_pred_2 <- 
-  lm_fit %>% 
+  lm_fit_2 %>% 
   predict(new_data = ames_test) %>% 
   mutate(price_truth = ames_test$Sale_Price)
 
