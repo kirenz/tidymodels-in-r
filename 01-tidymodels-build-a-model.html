@@ -1813,30 +1813,31 @@ div.tocify {
 <span id="cb5-3"><a href="#cb5-3"></a>  lm_spec, <span class="co"># your model specification </span></span>
 <span id="cb5-4"><a href="#cb5-4"></a>  Sale_Price <span class="op">~</span><span class="st"> </span>Gr_Liv_Area, <span class="co"># a Linear Regression formula </span></span>
 <span id="cb5-5"><a href="#cb5-5"></a>  <span class="dt">data =</span> ames <span class="co"># your data</span></span>
-<span id="cb5-6"><a href="#cb5-6"></a>  )</span>
-<span id="cb5-7"><a href="#cb5-7"></a></span>
-<span id="cb5-8"><a href="#cb5-8"></a><span class="co"># Show your fitted model</span></span>
-<span id="cb5-9"><a href="#cb5-9"></a>lm_fit</span></code></pre></div>
-<pre><code>## parsnip model object
-## 
-## Fit time:  4ms 
-## 
-## Call:
-## stats::lm(formula = Sale_Price ~ Gr_Liv_Area, data = data)
-## 
-## Coefficients:
-## (Intercept)  Gr_Liv_Area  
-##     13289.6        111.7</code></pre>
+<span id="cb5-6"><a href="#cb5-6"></a>  )</span></code></pre></div>
+<p>Show your fitted model:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1"></a><span class="kw">tidy</span>(lm_fit)</span></code></pre></div>
+<pre><code>## # A tibble: 2 x 5
+##   term        estimate std.error statistic   p.value
+##   &lt;chr&gt;          &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+## 1 (Intercept)   13290.   3270.        4.06 0.0000494
+## 2 Gr_Liv_Area     112.      2.07     54.1  0</code></pre>
+<p>Show performance metrics for training data:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1"></a><span class="kw">glance</span>(lm_fit<span class="op">$</span>fit)</span></code></pre></div>
+<pre><code>## # A tibble: 1 x 12
+##   r.squared adj.r.squared  sigma statistic p.value    df  logLik    AIC    BIC
+##       &lt;dbl&gt;         &lt;dbl&gt;  &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+## 1     0.500         0.499 56524.     2923.       0     1 -36218. 72442. 72460.
+## # … with 3 more variables: deviance &lt;dbl&gt;, df.residual &lt;int&gt;, nobs &lt;int&gt;</code></pre>
 </div>
 <div id="model-predictions" class="section level2" number="1.3">
 <h2 number="1.3"><span class="header-section-number">1.3</span> Model predictions</h2>
-<p>We use our fitted model to make predictions.</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1"></a>price_pred &lt;-<span class="st"> </span></span>
-<span id="cb7-2"><a href="#cb7-2"></a><span class="st">  </span>lm_fit <span class="op">%&gt;%</span><span class="st"> </span></span>
-<span id="cb7-3"><a href="#cb7-3"></a><span class="st">  </span><span class="kw">predict</span>(<span class="dt">new_data =</span> ames) <span class="op">%&gt;%</span></span>
-<span id="cb7-4"><a href="#cb7-4"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">price_truth =</span> ames<span class="op">$</span>Sale_Price)</span>
-<span id="cb7-5"><a href="#cb7-5"></a></span>
-<span id="cb7-6"><a href="#cb7-6"></a><span class="kw">head</span>(price_pred)</span></code></pre></div>
+<p>We use our fitted model to make predictions. In this example, we again use our training data.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1"></a>price_pred &lt;-<span class="st"> </span></span>
+<span id="cb10-2"><a href="#cb10-2"></a><span class="st">  </span>lm_fit <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb10-3"><a href="#cb10-3"></a><span class="st">  </span><span class="kw">predict</span>(<span class="dt">new_data =</span> ames) <span class="op">%&gt;%</span></span>
+<span id="cb10-4"><a href="#cb10-4"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">price_truth =</span> ames<span class="op">$</span>Sale_Price)</span>
+<span id="cb10-5"><a href="#cb10-5"></a></span>
+<span id="cb10-6"><a href="#cb10-6"></a><span class="kw">head</span>(price_pred)</span></code></pre></div>
 <pre><code>## # A tibble: 6 x 2
 ##     .pred price_truth
 ##     &lt;dbl&gt;       &lt;dbl&gt;
@@ -1846,14 +1847,25 @@ div.tocify {
 ## 4 248964.      244000
 ## 5 195239.      189900
 ## 6 192447.      195500</code></pre>
-<p>If we would want to make predictions for new houses, we could proceed as follows:</p>
-<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1"></a><span class="co"># New values (our x variable)</span></span>
-<span id="cb9-2"><a href="#cb9-2"></a>new_homes &lt;-<span class="st"> </span></span>
-<span id="cb9-3"><a href="#cb9-3"></a><span class="st">  </span><span class="kw">tibble</span>(<span class="dt">Gr_Liv_Area =</span> <span class="kw">c</span>(<span class="dv">334</span>, <span class="dv">1126</span>, <span class="dv">1442</span>, <span class="dv">1500</span>, <span class="dv">1743</span>, <span class="dv">5642</span>)) </span>
-<span id="cb9-4"><a href="#cb9-4"></a></span>
-<span id="cb9-5"><a href="#cb9-5"></a><span class="co"># Prediction for new houses (predict y)</span></span>
-<span id="cb9-6"><a href="#cb9-6"></a>lm_fit <span class="op">%&gt;%</span></span>
-<span id="cb9-7"><a href="#cb9-7"></a><span class="st"> </span><span class="kw">predict</span>(<span class="dt">new_data =</span> new_homes)</span></code></pre></div>
+</div>
+<div id="model-evaluation" class="section level2" number="1.4">
+<h2 number="1.4"><span class="header-section-number">1.4</span> Model evaluation</h2>
+<p>We use the Root Mean Squared Error (RMSE) to evaluate our regression model. Therefore, we use the function <span class="math inline">\(rmse(data, truth, estimate)\)</span>.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1"></a><span class="kw">rmse</span>(<span class="dt">data =</span> price_pred, </span>
+<span id="cb12-2"><a href="#cb12-2"></a>     <span class="dt">truth =</span> price_truth, </span>
+<span id="cb12-3"><a href="#cb12-3"></a>     <span class="dt">estimate =</span> .pred)</span></code></pre></div>
+<pre><code>## # A tibble: 1 x 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard      56505.</code></pre>
+<p>Note: if we would want to make predictions for new houses, we could proceed as follows:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a><span class="co"># New values (our x variable)</span></span>
+<span id="cb14-2"><a href="#cb14-2"></a>new_homes &lt;-<span class="st"> </span></span>
+<span id="cb14-3"><a href="#cb14-3"></a><span class="st">  </span><span class="kw">tibble</span>(<span class="dt">Gr_Liv_Area =</span> <span class="kw">c</span>(<span class="dv">334</span>, <span class="dv">1126</span>, <span class="dv">1442</span>, <span class="dv">1500</span>, <span class="dv">1743</span>, <span class="dv">5642</span>)) </span>
+<span id="cb14-4"><a href="#cb14-4"></a></span>
+<span id="cb14-5"><a href="#cb14-5"></a><span class="co"># Prediction for new houses (predict y)</span></span>
+<span id="cb14-6"><a href="#cb14-6"></a>lm_fit <span class="op">%&gt;%</span></span>
+<span id="cb14-7"><a href="#cb14-7"></a><span class="st"> </span><span class="kw">predict</span>(<span class="dt">new_data =</span> new_homes)</span></code></pre></div>
 <pre><code>## # A tibble: 6 x 1
 ##     .pred
 ##     &lt;dbl&gt;
@@ -1864,17 +1876,6 @@ div.tocify {
 ## 5 207972.
 ## 6 643467.</code></pre>
 </div>
-<div id="model-evaluation" class="section level2" number="1.4">
-<h2 number="1.4"><span class="header-section-number">1.4</span> Model evaluation</h2>
-<p>We use the Root Mean Squared Error (RMSE) to evaluate our regression model. Therefore, we use the function <span class="math inline">\(rmse(data, truth, estimate)\)</span>.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1"></a><span class="kw">rmse</span>(<span class="dt">data =</span> price_pred, </span>
-<span id="cb11-2"><a href="#cb11-2"></a>     <span class="dt">truth =</span> price_truth, </span>
-<span id="cb11-3"><a href="#cb11-3"></a>     <span class="dt">estimate =</span> .pred)</span></code></pre></div>
-<pre><code>## # A tibble: 1 x 3
-##   .metric .estimator .estimate
-##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
-## 1 rmse    standard      56505.</code></pre>
-</div>
 </div>
 <div id="process-with-data-splitting" class="section level1" number="2">
 <h1 number="2"><span class="header-section-number">2</span> Process with data splitting</h1>
@@ -1882,49 +1883,49 @@ div.tocify {
 <p>This function “splits” data randomly into a single testing and a single training set: <code>initial_split(data, prop = 3/4, strata, breaks)</code>. We also use <a href="https://en.wikipedia.org/wiki/Stratified_sampling">stratified sampling</a> in this example.</p>
 <div id="data-splitting" class="section level2" number="2.1">
 <h2 number="2.1"><span class="header-section-number">2.1</span> Data splitting</h2>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1"></a><span class="kw">set.seed</span>(<span class="dv">100</span>) </span>
-<span id="cb13-2"><a href="#cb13-2"></a></span>
-<span id="cb13-3"><a href="#cb13-3"></a>ames_split &lt;-<span class="st">  </span><span class="kw">initial_split</span>(ames,</span>
-<span id="cb13-4"><a href="#cb13-4"></a>                             <span class="dt">strata =</span> Sale_Price,</span>
-<span id="cb13-5"><a href="#cb13-5"></a>                             <span class="dt">breaks =</span> <span class="dv">4</span>)</span>
-<span id="cb13-6"><a href="#cb13-6"></a></span>
-<span id="cb13-7"><a href="#cb13-7"></a>ames_train &lt;-<span class="st">  </span><span class="kw">training</span>(ames_split)</span>
-<span id="cb13-8"><a href="#cb13-8"></a>ames_test &lt;-<span class="st"> </span><span class="kw">testing</span>(ames_split)</span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a><span class="kw">set.seed</span>(<span class="dv">100</span>) </span>
+<span id="cb16-2"><a href="#cb16-2"></a></span>
+<span id="cb16-3"><a href="#cb16-3"></a>ames_split &lt;-<span class="st">  </span><span class="kw">initial_split</span>(ames,</span>
+<span id="cb16-4"><a href="#cb16-4"></a>                             <span class="dt">strata =</span> Sale_Price,</span>
+<span id="cb16-5"><a href="#cb16-5"></a>                             <span class="dt">breaks =</span> <span class="dv">4</span>)</span>
+<span id="cb16-6"><a href="#cb16-6"></a></span>
+<span id="cb16-7"><a href="#cb16-7"></a>ames_train &lt;-<span class="st">  </span><span class="kw">training</span>(ames_split)</span>
+<span id="cb16-8"><a href="#cb16-8"></a>ames_test &lt;-<span class="st"> </span><span class="kw">testing</span>(ames_split)</span></code></pre></div>
 </div>
 <div id="model-type-1" class="section level2" number="2.2">
 <h2 number="2.2"><span class="header-section-number">2.2</span> Model type</h2>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1"></a>lm_spec_<span class="dv">2</span> &lt;-</span>
-<span id="cb14-2"><a href="#cb14-2"></a><span class="st">  </span><span class="kw">linear_reg</span>() <span class="op">%&gt;%</span><span class="st">  </span></span>
-<span id="cb14-3"><a href="#cb14-3"></a><span class="st">  </span><span class="kw">set_engine</span>(<span class="dt">engine =</span> <span class="st">&quot;lm&quot;</span>) <span class="op">%&gt;%</span><span class="st">  </span></span>
-<span id="cb14-4"><a href="#cb14-4"></a><span class="st">  </span><span class="kw">set_mode</span>(<span class="st">&quot;regression&quot;</span>) </span></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a>lm_spec_<span class="dv">2</span> &lt;-</span>
+<span id="cb17-2"><a href="#cb17-2"></a><span class="st">  </span><span class="kw">linear_reg</span>() <span class="op">%&gt;%</span><span class="st">  </span></span>
+<span id="cb17-3"><a href="#cb17-3"></a><span class="st">  </span><span class="kw">set_engine</span>(<span class="dt">engine =</span> <span class="st">&quot;lm&quot;</span>) <span class="op">%&gt;%</span><span class="st">  </span></span>
+<span id="cb17-4"><a href="#cb17-4"></a><span class="st">  </span><span class="kw">set_mode</span>(<span class="st">&quot;regression&quot;</span>) </span></code></pre></div>
 </div>
 <div id="model-training-1" class="section level2" number="2.3">
 <h2 number="2.3"><span class="header-section-number">2.3</span> Model training</h2>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1"></a>lm_fit_<span class="dv">2</span> &lt;-<span class="st"> </span></span>
-<span id="cb15-2"><a href="#cb15-2"></a><span class="st">  </span>lm_spec_<span class="dv">2</span> <span class="op">%&gt;%</span><span class="st"> </span></span>
-<span id="cb15-3"><a href="#cb15-3"></a><span class="st">  </span><span class="kw">fit</span>(Sale_Price <span class="op">~</span><span class="st"> </span>Gr_Liv_Area,</span>
-<span id="cb15-4"><a href="#cb15-4"></a>      <span class="dt">data =</span> ames_train) <span class="co"># only use training data</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1"></a>lm_fit_<span class="dv">2</span> &lt;-<span class="st"> </span></span>
+<span id="cb18-2"><a href="#cb18-2"></a><span class="st">  </span>lm_spec_<span class="dv">2</span> <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb18-3"><a href="#cb18-3"></a><span class="st">  </span><span class="kw">fit</span>(Sale_Price <span class="op">~</span><span class="st"> </span>Gr_Liv_Area,</span>
+<span id="cb18-4"><a href="#cb18-4"></a>      <span class="dt">data =</span> ames_train) <span class="co"># only use training data</span></span></code></pre></div>
 </div>
 <div id="model-predictions-1" class="section level2" number="2.4">
 <h2 number="2.4"><span class="header-section-number">2.4</span> Model predictions</h2>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1"></a>price_pred_<span class="dv">2</span> &lt;-<span class="st"> </span></span>
-<span id="cb16-2"><a href="#cb16-2"></a><span class="st">  </span>lm_fit <span class="op">%&gt;%</span><span class="st"> </span></span>
-<span id="cb16-3"><a href="#cb16-3"></a><span class="st">  </span><span class="kw">predict</span>(<span class="dt">new_data =</span> ames_test) <span class="op">%&gt;%</span><span class="st"> </span></span>
-<span id="cb16-4"><a href="#cb16-4"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">price_truth =</span> ames_test<span class="op">$</span>Sale_Price)</span></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1"></a>price_pred_<span class="dv">2</span> &lt;-<span class="st"> </span></span>
+<span id="cb19-2"><a href="#cb19-2"></a><span class="st">  </span>lm_fit_<span class="dv">2</span> <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb19-3"><a href="#cb19-3"></a><span class="st">  </span><span class="kw">predict</span>(<span class="dt">new_data =</span> ames_test) <span class="op">%&gt;%</span><span class="st"> </span></span>
+<span id="cb19-4"><a href="#cb19-4"></a><span class="st">  </span><span class="kw">mutate</span>(<span class="dt">price_truth =</span> ames_test<span class="op">$</span>Sale_Price)</span></code></pre></div>
 </div>
 <div id="model-evaluation-1" class="section level2" number="2.5">
 <h2 number="2.5"><span class="header-section-number">2.5</span> Model evaluation</h2>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1"></a><span class="kw">rmse</span>(price_pred_<span class="dv">2</span>, </span>
-<span id="cb17-2"><a href="#cb17-2"></a>     <span class="dt">truth =</span> price_truth, </span>
-<span id="cb17-3"><a href="#cb17-3"></a>     <span class="dt">estimate =</span> .pred)</span></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1"></a><span class="kw">rmse</span>(price_pred_<span class="dv">2</span>, </span>
+<span id="cb20-2"><a href="#cb20-2"></a>     <span class="dt">truth =</span> price_truth, </span>
+<span id="cb20-3"><a href="#cb20-3"></a>     <span class="dt">estimate =</span> .pred)</span></code></pre></div>
 <pre><code>## # A tibble: 1 x 3
 ##   .metric .estimator .estimate
 ##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
-## 1 rmse    standard      59054.</code></pre>
+## 1 rmse    standard      59194.</code></pre>
 </div>
 </div>
 
-<div id="rmd-source-code">LS0tCnRpdGxlOiAiVGlkeW1vZGVscyBJOiBCdWlsZCBhIE1vZGVsIgpzdWJ0aXRsZTogIkxlYXJuIGhvdyB0byBidWlsZCBhIHJlZ3Jlc3Npb24gbW9kZWwgd2l0aCB0aWR5bW9kZWxzIgphdXRob3I6ICJQcm9mLiBEci4gSmFuIEtpcmVueiIKb3V0cHV0OgogaHRtbF9kb2N1bWVudDoKICBjb2RlX2Rvd25sb2FkOiB0cnVlIAogIGZpZ19oZWlnaHQ6IDgKICBmaWdfd2lkdGg6IDEyCiAgaGlnaGxpZ2h0OiB0YW5nbwogIG51bWJlcl9zZWN0aW9uczogeWVzCiAgdGhlbWU6IHBhcGVyCiAgdG9jOiB5ZXMKICB0b2NfZGVwdGg6IDMKICB0b2NfZmxvYXQ6IAogICAgY29sbGFwc2VkOiBmYWxzZQogICAgc21vb3RoX3Njcm9sbDogdHJ1ZSAKLS0tCgoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0V9CmtuaXRyOjpvcHRzX2NodW5rJHNldCgKCWVjaG8gPSBUUlVFLAoJbWVzc2FnZSA9IEZBTFNFLAoJd2FybmluZyA9IEZBTFNFCikKbGlicmFyeSh0aWR5dmVyc2UpCmxpYnJhcnkodGlkeW1vZGVscykKYGBgCgoqVGhpcyB0dXRvcmlhbCBpcyBiYXNlZCBvbiBBbGlzc29uIEhpbGwncyBleGNlbGxlbnQgW3RpZHltb2RlbHMgd29ya3Nob3BdKGh0dHBzOi8vYWxpc29uLnJiaW5kLmlvL3RhZ3MvdGlkeW1vZGVscy8pLiogCgpJbiB0aGlzIHR1dG9yaWFsIHlvdSB3aWxsIGxlYXJuIGhvdyB0byBzcGVjaWZ5IGEgbW9kZWwgd2l0aCB0aGUgdGlkeW1vZGVscyBwYWNrYWdlLgoKQXMgZGF0YSwgd2UgdXNlIDIsOTMwIGhvdXNlcyBzb2xkIGluIEFtZXMsIElBIGZyb20gMjAwNiB0byAyMDEwLCBjb2xsZWN0ZWQgYnkgdGhlIEFtZXMgQXNzZXNzb3LigJlzIE/vrINjZS4gRnJvbSB0aGlzIGRhdGFzZXQsIHdlIG9ubHkgc2VsZWN0IG91ciBkZXBlbmRlbnQgdmFyaWFibGUgKGBTYWxlX1ByaWNlYCkgYW5kIG9uZSBwcmVkaWN0b3IgdmFyaWFibGUgKGBHcl9MaXZfQXJlYWApLgoKYGBge3J9CmxpYnJhcnkodGlkeXZlcnNlKQoKYW1lcyA8LSByZWFkX2NzdigiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2tpcmVuei9kYXRhc2V0cy9tYXN0ZXIvYW1lcy5jc3YiKQoKYW1lcyA8LSAKICBhbWVzICU+JQogIHNlbGVjdChTYWxlX1ByaWNlLCBHcl9MaXZfQXJlYSkKCmdsaW1wc2UoYW1lcykKCmBgYAoKCiMgU2ltcGxlIHByb2Nlc3MgCgpJbiB0aGlzIGZpcnN0IGV4YW1wbGUsIHdlIGRvbid0IHVzZSBkYXRhIHNwbGl0dGluZy4KCiMjIE1vZGVsIHR5cGUKCjEuIFBpY2sgYW4gYG1vZGVsIHR5cGVgOiBjaG9vc2UgZnJvbSB0aGlzIFtsaXN0XShodHRwczovL3d3dy50aWR5bW9kZWxzLm9yZy9maW5kL3BhcnNuaXAvKQoyLiBTZXQgdGhlIGBlbmdpbmVgOiBjaG9vc2UgZnJvbSB0aGlzIFtsaXN0XShodHRwczovL3d3dy50aWR5bW9kZWxzLm9yZy9maW5kL3BhcnNuaXAvKQozLiBTZXQgdGhlIGBtb2RlYDogcmVncmVzc2lvbiBvciBjbGFzc2lmaWNhdGlvbgoKYGBge3J9CmxpYnJhcnkodGlkeW1vZGVscykKCmxtX3NwZWMgPC0gIyB5b3VyIG1vZGVsIHNwZWNpZmljYXRpb24KICBsaW5lYXJfcmVnKCkgJT4lICAjIG1vZGVsIHR5cGUKICBzZXRfZW5naW5lKGVuZ2luZSA9ICJsbSIpICU+JSAgIyBtb2RlbCBlbmdpbmUKICBzZXRfbW9kZSgicmVncmVzc2lvbiIpICMgbW9kZWwgbW9kZQoKIyBTaG93IHlvdXIgbW9kZWwgc3BlY2lmaWNhdGlvbgpsbV9zcGVjCgpgYGAKCgojIyBNb2RlbCB0cmFpbmluZwoKSW4gdGhlIHRyYWluaW5nIHByb2Nlc3MsIHlvdSBydW4gYW4gYWxnb3JpdGhtIG9uIGRhdGEgYW5kIHRoZXJlYnkgcHJvZHVjZSBhIG1vZGVsLiBUaGlzIHByb2Nlc3MgaXMgYWxzbyBjYWxsZWQgbW9kZWwgZml0dGluZy4KCgpgYGB7cn0KCmxtX2ZpdCA8LSAjIHlvdXIgZml0dGVkIG1vZGVsCiAgZml0KCAKICBsbV9zcGVjLCAjIHlvdXIgbW9kZWwgc3BlY2lmaWNhdGlvbiAKICBTYWxlX1ByaWNlIH4gR3JfTGl2X0FyZWEsICMgYSBMaW5lYXIgUmVncmVzc2lvbiBmb3JtdWxhIAogIGRhdGEgPSBhbWVzICMgeW91ciBkYXRhCiAgKQoKIyBTaG93IHlvdXIgZml0dGVkIG1vZGVsCmxtX2ZpdAoKYGBgCgojIyBNb2RlbCBwcmVkaWN0aW9ucwoKV2UgdXNlIG91ciBmaXR0ZWQgbW9kZWwgdG8gbWFrZSBwcmVkaWN0aW9ucy4gCgpgYGB7cn0KCnByaWNlX3ByZWQgPC0gCiAgbG1fZml0ICU+JSAKICBwcmVkaWN0KG5ld19kYXRhID0gYW1lcykgJT4lCiAgbXV0YXRlKHByaWNlX3RydXRoID0gYW1lcyRTYWxlX1ByaWNlKQoKaGVhZChwcmljZV9wcmVkKQoKYGBgCgpJZiB3ZSB3b3VsZCB3YW50IHRvIG1ha2UgcHJlZGljdGlvbnMgZm9yIG5ldyBob3VzZXMsIHdlIGNvdWxkIHByb2NlZWQgYXMgZm9sbG93czogCgpgYGB7cn0KCiMgTmV3IHZhbHVlcyAob3VyIHggdmFyaWFibGUpCm5ld19ob21lcyA8LSAKICB0aWJibGUoR3JfTGl2X0FyZWEgPSBjKDMzNCwgMTEyNiwgMTQ0MiwgMTUwMCwgMTc0MywgNTY0MikpIAoKIyBQcmVkaWN0aW9uIGZvciBuZXcgaG91c2VzIChwcmVkaWN0IHkpCmxtX2ZpdCAlPiUKIHByZWRpY3QobmV3X2RhdGEgPSBuZXdfaG9tZXMpCgpgYGAKCgojIyBNb2RlbCBldmFsdWF0aW9uIAoKV2UgdXNlIHRoZSBSb290IE1lYW4gU3F1YXJlZCBFcnJvciAoUk1TRSkgdG8gZXZhbHVhdGUgb3VyIHJlZ3Jlc3Npb24gbW9kZWwuIFRoZXJlZm9yZSwgd2UgdXNlIHRoZSBmdW5jdGlvbiAkcm1zZShkYXRhLCB0cnV0aCwgZXN0aW1hdGUpJC4KCmBgYHtyfQoKcm1zZShkYXRhID0gcHJpY2VfcHJlZCwgCiAgICAgdHJ1dGggPSBwcmljZV90cnV0aCwgCiAgICAgZXN0aW1hdGUgPSAucHJlZCkKCmBgYAoKCiMgUHJvY2VzcyB3aXRoIGRhdGEgc3BsaXR0aW5nCgpUaGUgYmVzdCB3YXkgdG8gbWVhc3VyZSBhIG1vZGVsJ3MgcGVyZm9ybWFuY2UgYXQgcHJlZGljdGluZyBuZXcgZGF0YSBpcyB0byBhY3R1YWxseSBwcmVkaWN0IG5ldyBkYXRhLgoKVGhpcyBmdW5jdGlvbiAic3BsaXRzIiBkYXRhIHJhbmRvbWx5IGludG8gYSBzaW5nbGUgdGVzdGluZyBhbmQgYSBzaW5nbGUgdHJhaW5pbmcgc2V0OiBgaW5pdGlhbF9zcGxpdChkYXRhLCBwcm9wID0gMy80LCBzdHJhdGEsIGJyZWFrcylgLiBXZSBhbHNvIHVzZSBbc3RyYXRpZmllZCBzYW1wbGluZ10oaHR0cHM6Ly9lbi53aWtpcGVkaWEub3JnL3dpa2kvU3RyYXRpZmllZF9zYW1wbGluZykgaW4gdGhpcyBleGFtcGxlLgoKIyMgRGF0YSBzcGxpdHRpbmcKCmBgYHtyfQoKc2V0LnNlZWQoMTAwKSAKCmFtZXNfc3BsaXQgPC0gIGluaXRpYWxfc3BsaXQoYW1lcywKICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzdHJhdGEgPSBTYWxlX1ByaWNlLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIGJyZWFrcyA9IDQpCgphbWVzX3RyYWluIDwtICB0cmFpbmluZyhhbWVzX3NwbGl0KQphbWVzX3Rlc3QgPC0gdGVzdGluZyhhbWVzX3NwbGl0KQoKYGBgCgojIyBNb2RlbCB0eXBlCgpgYGB7cn0KCmxtX3NwZWNfMiA8LQogIGxpbmVhcl9yZWcoKSAlPiUgIAogIHNldF9lbmdpbmUoZW5naW5lID0gImxtIikgJT4lICAKICBzZXRfbW9kZSgicmVncmVzc2lvbiIpIAoKYGBgCgojIyBNb2RlbCB0cmFpbmluZwoKYGBge3J9CiAgICAgICAgICAgICAKbG1fZml0XzIgPC0gCiAgbG1fc3BlY18yICU+JSAKICBmaXQoU2FsZV9QcmljZSB+IEdyX0xpdl9BcmVhLAogICAgICBkYXRhID0gYW1lc190cmFpbikgIyBvbmx5IHVzZSB0cmFpbmluZyBkYXRhCgpgYGAKCiMjIE1vZGVsIHByZWRpY3Rpb25zCgpgYGB7cn0KIApwcmljZV9wcmVkXzIgPC0gCiAgbG1fZml0ICU+JSAKICBwcmVkaWN0KG5ld19kYXRhID0gYW1lc190ZXN0KSAlPiUgCiAgbXV0YXRlKHByaWNlX3RydXRoID0gYW1lc190ZXN0JFNhbGVfUHJpY2UpCgpgYGAKCiMjIE1vZGVsIGV2YWx1YXRpb24KCmBgYHtyfQoKcm1zZShwcmljZV9wcmVkXzIsIAogICAgIHRydXRoID0gcHJpY2VfdHJ1dGgsIAogICAgIGVzdGltYXRlID0gLnByZWQpCgpgYGAKCg==</div>
+<div id="rmd-source-code">LS0tCnRpdGxlOiAiVGlkeW1vZGVscyBJOiBCdWlsZCBhIE1vZGVsIgpzdWJ0aXRsZTogIkxlYXJuIGhvdyB0byBidWlsZCBhIHJlZ3Jlc3Npb24gbW9kZWwgd2l0aCB0aWR5bW9kZWxzIgphdXRob3I6ICJQcm9mLiBEci4gSmFuIEtpcmVueiIKb3V0cHV0OgogaHRtbF9kb2N1bWVudDoKICBjb2RlX2Rvd25sb2FkOiB0cnVlIAogIGZpZ19oZWlnaHQ6IDgKICBmaWdfd2lkdGg6IDEyCiAgaGlnaGxpZ2h0OiB0YW5nbwogIG51bWJlcl9zZWN0aW9uczogeWVzCiAgdGhlbWU6IHBhcGVyCiAgdG9jOiB5ZXMKICB0b2NfZGVwdGg6IDMKICB0b2NfZmxvYXQ6IAogICAgY29sbGFwc2VkOiBmYWxzZQogICAgc21vb3RoX3Njcm9sbDogdHJ1ZSAKLS0tCgoKYGBge3Igc2V0dXAsIGluY2x1ZGU9RkFMU0V9CmtuaXRyOjpvcHRzX2NodW5rJHNldCgKCWVjaG8gPSBUUlVFLAoJbWVzc2FnZSA9IEZBTFNFLAoJd2FybmluZyA9IEZBTFNFCikKbGlicmFyeSh0aWR5dmVyc2UpCmxpYnJhcnkodGlkeW1vZGVscykKYGBgCgoqVGhpcyB0dXRvcmlhbCBpcyBiYXNlZCBvbiBBbGlzc29uIEhpbGwncyBleGNlbGxlbnQgW3RpZHltb2RlbHMgd29ya3Nob3BdKGh0dHBzOi8vYWxpc29uLnJiaW5kLmlvL3RhZ3MvdGlkeW1vZGVscy8pLiogCgpJbiB0aGlzIHR1dG9yaWFsIHlvdSB3aWxsIGxlYXJuIGhvdyB0byBzcGVjaWZ5IGEgbW9kZWwgd2l0aCB0aGUgdGlkeW1vZGVscyBwYWNrYWdlLgoKQXMgZGF0YSwgd2UgdXNlIDIsOTMwIGhvdXNlcyBzb2xkIGluIEFtZXMsIElBIGZyb20gMjAwNiB0byAyMDEwLCBjb2xsZWN0ZWQgYnkgdGhlIEFtZXMgQXNzZXNzb3LigJlzIE/vrINjZS4gRnJvbSB0aGlzIGRhdGFzZXQsIHdlIG9ubHkgc2VsZWN0IG91ciBkZXBlbmRlbnQgdmFyaWFibGUgKGBTYWxlX1ByaWNlYCkgYW5kIG9uZSBwcmVkaWN0b3IgdmFyaWFibGUgKGBHcl9MaXZfQXJlYWApLgoKYGBge3J9CmxpYnJhcnkodGlkeXZlcnNlKQoKYW1lcyA8LSByZWFkX2NzdigiaHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tL2tpcmVuei9kYXRhc2V0cy9tYXN0ZXIvYW1lcy5jc3YiKQoKYW1lcyA8LSAKICBhbWVzICU+JQogIHNlbGVjdChTYWxlX1ByaWNlLCBHcl9MaXZfQXJlYSkKCmdsaW1wc2UoYW1lcykKCmBgYAoKCiMgU2ltcGxlIHByb2Nlc3MgCgpJbiB0aGlzIGZpcnN0IGV4YW1wbGUsIHdlIGRvbid0IHVzZSBkYXRhIHNwbGl0dGluZy4KCiMjIE1vZGVsIHR5cGUKCjEuIFBpY2sgYW4gYG1vZGVsIHR5cGVgOiBjaG9vc2UgZnJvbSB0aGlzIFtsaXN0XShodHRwczovL3d3dy50aWR5bW9kZWxzLm9yZy9maW5kL3BhcnNuaXAvKQoyLiBTZXQgdGhlIGBlbmdpbmVgOiBjaG9vc2UgZnJvbSB0aGlzIFtsaXN0XShodHRwczovL3d3dy50aWR5bW9kZWxzLm9yZy9maW5kL3BhcnNuaXAvKQozLiBTZXQgdGhlIGBtb2RlYDogcmVncmVzc2lvbiBvciBjbGFzc2lmaWNhdGlvbgoKYGBge3J9CmxpYnJhcnkodGlkeW1vZGVscykKCmxtX3NwZWMgPC0gIyB5b3VyIG1vZGVsIHNwZWNpZmljYXRpb24KICBsaW5lYXJfcmVnKCkgJT4lICAjIG1vZGVsIHR5cGUKICBzZXRfZW5naW5lKGVuZ2luZSA9ICJsbSIpICU+JSAgIyBtb2RlbCBlbmdpbmUKICBzZXRfbW9kZSgicmVncmVzc2lvbiIpICMgbW9kZWwgbW9kZQoKIyBTaG93IHlvdXIgbW9kZWwgc3BlY2lmaWNhdGlvbgpsbV9zcGVjCgpgYGAKCgojIyBNb2RlbCB0cmFpbmluZwoKSW4gdGhlIHRyYWluaW5nIHByb2Nlc3MsIHlvdSBydW4gYW4gYWxnb3JpdGhtIG9uIGRhdGEgYW5kIHRoZXJlYnkgcHJvZHVjZSBhIG1vZGVsLiBUaGlzIHByb2Nlc3MgaXMgYWxzbyBjYWxsZWQgbW9kZWwgZml0dGluZy4KCgpgYGB7cn0KCmxtX2ZpdCA8LSAjIHlvdXIgZml0dGVkIG1vZGVsCiAgZml0KCAKICBsbV9zcGVjLCAjIHlvdXIgbW9kZWwgc3BlY2lmaWNhdGlvbiAKICBTYWxlX1ByaWNlIH4gR3JfTGl2X0FyZWEsICMgYSBMaW5lYXIgUmVncmVzc2lvbiBmb3JtdWxhIAogIGRhdGEgPSBhbWVzICMgeW91ciBkYXRhCiAgKQoKYGBgCgpTaG93IHlvdXIgZml0dGVkIG1vZGVsOgoKYGBge3J9CnRpZHkobG1fZml0KQpgYGAKClNob3cgcGVyZm9ybWFuY2UgbWV0cmljcyBmb3IgdHJhaW5pbmcgZGF0YToKCmBgYHtyfQpnbGFuY2UobG1fZml0JGZpdCkKYGBgCgoKCiMjIE1vZGVsIHByZWRpY3Rpb25zCgpXZSB1c2Ugb3VyIGZpdHRlZCBtb2RlbCB0byBtYWtlIHByZWRpY3Rpb25zLiBJbiB0aGlzIGV4YW1wbGUsIHdlIGFnYWluIHVzZSBvdXIgdHJhaW5pbmcgZGF0YS4KCmBgYHtyfQoKcHJpY2VfcHJlZCA8LSAKICBsbV9maXQgJT4lIAogIHByZWRpY3QobmV3X2RhdGEgPSBhbWVzKSAlPiUKICBtdXRhdGUocHJpY2VfdHJ1dGggPSBhbWVzJFNhbGVfUHJpY2UpCgpoZWFkKHByaWNlX3ByZWQpCgpgYGAKCgoKIyMgTW9kZWwgZXZhbHVhdGlvbiAKCldlIHVzZSB0aGUgUm9vdCBNZWFuIFNxdWFyZWQgRXJyb3IgKFJNU0UpIHRvIGV2YWx1YXRlIG91ciByZWdyZXNzaW9uIG1vZGVsLiBUaGVyZWZvcmUsIHdlIHVzZSB0aGUgZnVuY3Rpb24gJHJtc2UoZGF0YSwgdHJ1dGgsIGVzdGltYXRlKSQuCgpgYGB7cn0KCnJtc2UoZGF0YSA9IHByaWNlX3ByZWQsIAogICAgIHRydXRoID0gcHJpY2VfdHJ1dGgsIAogICAgIGVzdGltYXRlID0gLnByZWQpCgpgYGAKCgpOb3RlOiBpZiB3ZSB3b3VsZCB3YW50IHRvIG1ha2UgcHJlZGljdGlvbnMgZm9yIG5ldyBob3VzZXMsIHdlIGNvdWxkIHByb2NlZWQgYXMgZm9sbG93czogCgpgYGB7cn0KCiMgTmV3IHZhbHVlcyAob3VyIHggdmFyaWFibGUpCm5ld19ob21lcyA8LSAKICB0aWJibGUoR3JfTGl2X0FyZWEgPSBjKDMzNCwgMTEyNiwgMTQ0MiwgMTUwMCwgMTc0MywgNTY0MikpIAoKIyBQcmVkaWN0aW9uIGZvciBuZXcgaG91c2VzIChwcmVkaWN0IHkpCmxtX2ZpdCAlPiUKIHByZWRpY3QobmV3X2RhdGEgPSBuZXdfaG9tZXMpCgpgYGAKCgoKIyBQcm9jZXNzIHdpdGggZGF0YSBzcGxpdHRpbmcKClRoZSBiZXN0IHdheSB0byBtZWFzdXJlIGEgbW9kZWwncyBwZXJmb3JtYW5jZSBhdCBwcmVkaWN0aW5nIG5ldyBkYXRhIGlzIHRvIGFjdHVhbGx5IHByZWRpY3QgbmV3IGRhdGEuCgpUaGlzIGZ1bmN0aW9uICJzcGxpdHMiIGRhdGEgcmFuZG9tbHkgaW50byBhIHNpbmdsZSB0ZXN0aW5nIGFuZCBhIHNpbmdsZSB0cmFpbmluZyBzZXQ6IGBpbml0aWFsX3NwbGl0KGRhdGEsIHByb3AgPSAzLzQsIHN0cmF0YSwgYnJlYWtzKWAuIFdlIGFsc28gdXNlIFtzdHJhdGlmaWVkIHNhbXBsaW5nXShodHRwczovL2VuLndpa2lwZWRpYS5vcmcvd2lraS9TdHJhdGlmaWVkX3NhbXBsaW5nKSBpbiB0aGlzIGV4YW1wbGUuCgojIyBEYXRhIHNwbGl0dGluZwoKYGBge3J9CgpzZXQuc2VlZCgxMDApIAoKYW1lc19zcGxpdCA8LSAgaW5pdGlhbF9zcGxpdChhbWVzLAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIHN0cmF0YSA9IFNhbGVfUHJpY2UsCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgYnJlYWtzID0gNCkKCmFtZXNfdHJhaW4gPC0gIHRyYWluaW5nKGFtZXNfc3BsaXQpCmFtZXNfdGVzdCA8LSB0ZXN0aW5nKGFtZXNfc3BsaXQpCgpgYGAKCiMjIE1vZGVsIHR5cGUKCmBgYHtyfQoKbG1fc3BlY18yIDwtCiAgbGluZWFyX3JlZygpICU+JSAgCiAgc2V0X2VuZ2luZShlbmdpbmUgPSAibG0iKSAlPiUgIAogIHNldF9tb2RlKCJyZWdyZXNzaW9uIikgCgpgYGAKCiMjIE1vZGVsIHRyYWluaW5nCgpgYGB7cn0KICAgICAgICAgICAgIApsbV9maXRfMiA8LSAKICBsbV9zcGVjXzIgJT4lIAogIGZpdChTYWxlX1ByaWNlIH4gR3JfTGl2X0FyZWEsCiAgICAgIGRhdGEgPSBhbWVzX3RyYWluKSAjIG9ubHkgdXNlIHRyYWluaW5nIGRhdGEKCmBgYAoKIyMgTW9kZWwgcHJlZGljdGlvbnMKCmBgYHtyfQogCnByaWNlX3ByZWRfMiA8LSAKICBsbV9maXRfMiAlPiUgCiAgcHJlZGljdChuZXdfZGF0YSA9IGFtZXNfdGVzdCkgJT4lIAogIG11dGF0ZShwcmljZV90cnV0aCA9IGFtZXNfdGVzdCRTYWxlX1ByaWNlKQoKYGBgCgojIyBNb2RlbCBldmFsdWF0aW9uCgpgYGB7cn0KCnJtc2UocHJpY2VfcHJlZF8yLCAKICAgICB0cnV0aCA9IHByaWNlX3RydXRoLCAKICAgICBlc3RpbWF0ZSA9IC5wcmVkKQoKYGBgCgo=</div>
 
 
 </div>

@@ -86,14 +86,25 @@ lm_fit <- # your fitted model
   data = ames # your data
   )
 
-# Show your fitted model
-lm_fit
-
 ```
+
+Show your fitted model:
+
+```{r}
+tidy(lm_fit)
+```
+
+Show performance metrics for training data:
+
+```{r}
+glance(lm_fit$fit)
+```
+
+
 
 ## Model predictions
 
-We use our fitted model to make predictions. 
+We use our fitted model to make predictions. In this example, we again use our training data.
 
 ```{r}
 
@@ -119,7 +130,6 @@ rmse(data = price_pred,
      estimate = .pred)
 
 ```
-
 
 
 Note: if we would want to make predictions for new houses, we could proceed as follows: 
