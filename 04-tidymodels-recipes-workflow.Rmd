@@ -560,7 +560,7 @@ flights_fit_lr_mode %>%
 
 ```{r}
 
-flights_fit_xgb_mode %>% 
+flights_wflow_dt_mod %>% 
   pull_workflow_prepped_recipe()
 
 ```
