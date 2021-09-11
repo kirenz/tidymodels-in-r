@@ -302,13 +302,13 @@ new_wf_fit <-
 
 ## predict() & rmse()
 
-Make predictions and calculate the RMSE for our training data. 
+Make predictions and calculate the RMSE for our test data. 
 
 
 ```{r}
 new_wf_fit %>% 
- predict(new_train) %>%
- mutate(truth = new_train$Sale_Price) %>%
+ predict(new_test) %>%
+ mutate(truth = new_test$Sale_Price) %>%
  rmse(truth, .pred)
 
 ```
