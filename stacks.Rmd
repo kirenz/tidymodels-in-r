@@ -1,0 +1,299 @@
+---
+title: "Stacks"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidymodels)
+library(stacks)
+library(dplyr)
+library(purrr)
+library(kknn)
+library(kernlab)
+```
+
+![](https://github.com/tidymodels/stacks/blob/main/inst/figs/outline.png?raw=true)
+
+# Preparation
+
+## Data
+
+```{r}
+data("tree_frogs")
+
+# subset the data
+tree_frogs <- tree_frogs %>%
+  filter(!is.na(latency)) %>%
+  select(-c(clutch, hatched))
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(tree_frogs) +
+  aes(x = age, y = latency, color = treatment) +
+  geom_point() +
+  labs(x = "Embryo Age (s)", y = "Time to Hatch (s)", col = "Treatment")
+
+```
+
+## Recipe
+
+```{r}
+# some setup: resampling and a basic recipe
+set.seed(1)
+tree_frogs_split <- initial_split(tree_frogs)
+tree_frogs_train <- training(tree_frogs_split)
+tree_frogs_test  <- testing(tree_frogs_split)
+
+set.seed(1)
+folds <- rsample::vfold_cv(tree_frogs_train, v = 5)
+
+tree_frogs_rec <- 
+  recipe(latency ~ ., data = tree_frogs_train)
+
+metric <- metric_set(rmse)
+```
+
+
+## Prepare Stack
+
+```{r}
+ctrl_grid <- control_stack_grid()
+ctrl_res <- control_stack_resamples()
+```
+
+# Models
+
+## KNN
+
+```{r}
+# create a model definition
+knn_spec <-
+  nearest_neighbor(
+    mode = "regression", 
+    neighbors = tune("k")
+  ) %>%
+  set_engine("kknn")
+
+knn_spec
+```
+```{r}
+# extend the recipe
+knn_rec <-
+  tree_frogs_rec %>%
+  step_dummy(all_nominal()) %>%
+  step_zv(all_predictors(), skip = TRUE) %>%
+  step_impute_mean(all_numeric(), skip = TRUE) %>%
+  step_normalize(all_numeric(), skip = TRUE)
+
+```
+
+
+```{r}
+# add both to a workflow
+knn_wflow <- 
+  workflow() %>% 
+  add_model(knn_spec) %>%
+  add_recipe(knn_rec)
+
+knn_wflow
+```
+
+```{r}
+# tune k and fit to the 5-fold cv
+set.seed(2020)
+knn_res <- 
+  tune_grid(
+    knn_wflow,
+    resamples = folds,
+    metrics = metric,
+    grid = 4,
+    control = ctrl_grid
+  )
+
+knn_res
+```
+
+
+## Linear Regression
+
+```{r}
+# create a model definition
+lin_reg_spec <-
+  linear_reg() %>%
+  set_engine("lm")
+
+# extend the recipe
+lin_reg_rec <-
+  tree_frogs_rec %>%
+  step_dummy(all_nominal()) %>%
+  step_zv(all_predictors(), skip = TRUE)
+
+# add both to a workflow
+lin_reg_wflow <- 
+  workflow() %>%
+  add_model(lin_reg_spec) %>%
+  add_recipe(lin_reg_rec)
+
+# fit to the 5-fold cv
+set.seed(2020)
+lin_reg_res <- 
+  fit_resamples(
+    lin_reg_wflow,
+    resamples = folds,
+    metrics = metric,
+    control = ctrl_res
+  )
+
+lin_reg_res
+```
+
+
+## SVM
+
+```{r}
+# create a model definition
+svm_spec <- 
+  svm_rbf(
+    cost = tune("cost"), 
+    rbf_sigma = tune("sigma")
+  ) %>%
+  set_engine("kernlab") %>%
+  set_mode("regression")
+
+# extend the recipe
+svm_rec <-
+  tree_frogs_rec %>%
+  step_dummy(all_nominal()) %>%
+  step_zv(all_predictors(), skip = TRUE) %>%
+  step_meanimpute(all_numeric(), skip = TRUE) %>%
+  step_corr(all_predictors(), skip = TRUE) %>%
+  step_normalize(all_numeric(), skip = TRUE)
+#> Warning: `step_meanimpute()` was deprecated in recipes 0.1.16.
+#> Please use `step_impute_mean()` instead.
+
+# add both to a workflow
+svm_wflow <- 
+  workflow() %>% 
+  add_model(svm_spec) %>%
+  add_recipe(svm_rec)
+
+# tune cost and sigma and fit to the 5-fold cv
+set.seed(2020)
+svm_res <- 
+  tune_grid(
+    svm_wflow, 
+    resamples = folds, 
+    grid = 6,
+    metrics = metric,
+    control = ctrl_grid
+  )
+
+svm_res
+```
+
+# Stacking
+
+The `stacks()` function works sort of like the ggplot() constructor from ggplot2—the function creates a basic structure that the object will be built on top of—except you’ll pipe the outputs rather than adding them with +.
+
+The `add_candidates()` function adds ensemble members to the stack.
+
+```{r}
+tree_frogs_data_st <- 
+  stacks() %>%
+  add_candidates(knn_res) %>%
+  add_candidates(lin_reg_res) %>%
+  add_candidates(svm_res)
+```
+
+```{r}
+as_tibble(tree_frogs_data_st)
+```
+The first column gives the first response value, and the remaining columns give the assessment set predictions for each ensemble member. Since we’re in the regression case, there’s only one column per ensemble member. In classification settings, there are as many columns as there are levels of the outcome variable per candidate ensemble member.
+
+# Fit the Stack
+
+The outputs from each of these candidate ensemble members are highly correlated, so the blend_predictions() function performs regularization to figure out how we can combine the outputs from the stack members to come up with a final prediction.
+
+```{r}
+tree_frogs_model_st <-
+  tree_frogs_data_st %>%
+  blend_predictions()
+```
+
+
+```{r}
+tree_frogs_model_st
+```
+
+The blend_predictions function determines how member model output will ultimately be combined in the final prediction by fitting a LASSO model on the data stack, predicting the true assessment set outcome using the predictions from each of the candidate members. Candidates with nonzero stacking coefficients become members.
+
+```{r}
+theme_set(theme_bw())
+autoplot(tree_frogs_model_st)
+```
+
+```{r}
+autoplot(tree_frogs_model_st, type = "members")
+```
+
+```{r}
+autoplot(tree_frogs_model_st, type = "weights")
+```
+
+Now that we know how to combine our model output, we can fit the candidates with non-zero stacking coefficients on the full training set.
+
+
+
+```{r}
+tree_frogs_model_st <-
+  tree_frogs_model_st %>%
+  fit_members()
+```
+
+To identify which model configurations were assigned what stacking coefficients, we can make use of the collect_parameters() function:
+
+
+
+```{r}
+collect_parameters(tree_frogs_model_st, "svm_res")
+```
+
+This object is now ready to predict with new data!
+
+
+```{r}
+tree_frogs_test <- 
+  tree_frogs_test %>%
+  bind_cols(predict(tree_frogs_model_st, .))
+```
+
+```{r}
+ggplot(tree_frogs_test) +
+  aes(x = latency, 
+      y = .pred) +
+  geom_point() + 
+  coord_obs_pred()
+```
+
+```{r}
+member_preds <- 
+  tree_frogs_test %>%
+  select(latency) %>%
+  bind_cols(predict(tree_frogs_model_st, tree_frogs_test, members = TRUE))
+```
+
+Now, evaluating the root mean squared error from each model:
+
+
+
+```{r}
+map_dfr(member_preds, rmse, truth = latency, data = member_preds) %>%
+  mutate(member = colnames(member_preds))
+```
+
+As we can see, the stacked ensemble outperforms each of the member models, though is closely followed by one of its members.
+
+
