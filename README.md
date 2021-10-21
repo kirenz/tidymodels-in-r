@@ -14,3 +14,5 @@ R Code:
  * [06 Lasso Regression](http://htmlpreview.github.io/?https://github.com/kirenz/tidymodels-in-r/blob/main/06-tidymodels-lasso.html
 ), Learn how to use and tune a Lasso Model with Tidymodels.
  
+  * [07 Stacks](http://htmlpreview.github.io/?https://github.com/kirenz/tidymodels-in-r/blob/main/stacks.html
+), Learn how to use stacking with Tidymodels.
